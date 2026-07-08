@@ -1,0 +1,2033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brunssum Housing SITREP</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Big+Shoulders+Condensed:wght@600;700;800&display=swap">
+<style>
+  :root{
+    --bg:#0c0f0a;
+    --panel:#12160f;
+    --panel-raised:#171c13;
+    --border:#2c3324;
+    --border-bright:#4a5636;
+    --ink:#d8dcc8;
+    --ink-dim:#7c8567;
+    --amber:#ffb000;
+    --amber-dim:#8a6108;
+    --olive:#9aa876;
+    --new:#5fbf5f;
+    --new-dim:#1e3319;
+    --gone:#d9503f;
+    --gone-dim:#331c17;
+    --changed:#e8b84b;
+    --changed-dim:#332a13;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;}
+  .board{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'JetBrains Mono',monospace;
+    padding:0;
+    min-height:100%;
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(255,176,0,0.04), transparent 40%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
+  }
+  .masthead{
+    border-bottom:2px solid var(--border-bright);
+    padding:22px 24px 16px;
+    position:relative;
+  }
+  .masthead::before{
+    content:'';
+    position:absolute;
+    top:0;left:0;right:0;
+    height:3px;
+    background:repeating-linear-gradient(90deg,var(--amber) 0 14px, transparent 14px 22px);
+    opacity:0.55;
+  }
+  .eyebrow{
+    font-family:'Big Shoulders Condensed',sans-serif;
+    font-weight:700;
+    letter-spacing:0.28em;
+    font-size:12px;
+    color:var(--amber-dim);
+    text-transform:uppercase;
+  }
+  h1{
+    font-family:'Big Shoulders Condensed',sans-serif;
+    font-weight:800;
+    font-size:44px;
+    letter-spacing:0.01em;
+    margin:2px 0 4px;
+    color:var(--ink);
+    text-transform:uppercase;
+    line-height:0.95;
+  }
+  h1 span{color:var(--amber);}
+  .sub{
+    font-size:12px;
+    color:var(--ink-dim);
+    letter-spacing:0.04em;
+  }
+  .stampline{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:16px;
+  }
+  .stamp{
+    border:1.5px solid var(--border-bright);
+    padding:6px 12px;
+    font-size:11px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    background:var(--panel);
+  }
+  .stamp b{color:var(--ink);font-weight:700;}
+  .stamp.n{border-color:var(--new);color:var(--new);}
+  .stamp.c{border-color:var(--changed);color:var(--changed);}
+  .stamp.g{border-color:var(--gone);color:var(--gone);}
+
+  .body-grid{
+    padding:22px 24px 60px;
+    display:flex;
+    flex-direction:column;
+    gap:22px;
+    max-width:980px;
+    margin:0 auto;
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    padding:18px 20px;
+  }
+  .panel-title{
+    font-family:'Big Shoulders Condensed',sans-serif;
+    font-weight:700;
+    letter-spacing:0.12em;
+    font-size:15px;
+    text-transform:uppercase;
+    color:var(--olive);
+    margin:0 0 12px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .panel-title::after{
+    content:'';
+    flex:1;
+    height:1px;
+    background:var(--border);
+  }
+
+  textarea{
+    width:100%;
+    min-height:220px;
+    background:#080a06;
+    border:1px solid var(--border);
+    color:var(--ink);
+    font-family:'JetBrains Mono',monospace;
+    font-size:12.5px;
+    line-height:1.5;
+    padding:12px;
+    resize:vertical;
+  }
+  textarea:focus{outline:1.5px solid var(--amber-dim);}
+  textarea::placeholder{color:#3d4432;}
+
+  .row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    margin-top:12px;
+    flex-wrap:wrap;
+  }
+  button{
+    font-family:'Big Shoulders Condensed',sans-serif;
+    font-weight:700;
+    letter-spacing:0.1em;
+    font-size:15px;
+    text-transform:uppercase;
+    background:var(--amber);
+    color:#161200;
+    border:none;
+    padding:11px 22px;
+    cursor:pointer;
+    transition:filter 0.12s ease, transform 0.05s ease;
+  }
+  button:hover{filter:brightness(1.12);}
+  button:active{transform:translateY(1px);}
+  button.ghost{
+    background:transparent;
+    border:1.5px solid var(--border-bright);
+    color:var(--ink-dim);
+  }
+  button.ghost:hover{color:var(--ink);border-color:var(--olive);}
+  .status-msg{
+    font-size:12px;
+    color:var(--ink-dim);
+  }
+
+  .empty{
+    color:var(--ink-dim);
+    font-size:13px;
+    padding:16px 4px;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12px;
+  }
+  th{
+    text-align:left;
+    font-family:'Big Shoulders Condensed',sans-serif;
+    letter-spacing:0.08em;
+    font-weight:700;
+    font-size:11px;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    padding:6px 10px;
+    border-bottom:1px solid var(--border-bright);
+    white-space:nowrap;
+  }
+  td{
+    padding:8px 10px;
+    border-bottom:1px solid var(--border);
+    vertical-align:top;
+  }
+  tr.new-row td{background:var(--new-dim);}
+  tr.gone-row td{background:var(--gone-dim);text-decoration:line-through;text-decoration-color:var(--gone);opacity:0.85;}
+  tr.changed-row td{background:var(--changed-dim);}
+  .tag{
+    display:inline-block;
+    font-family:'Big Shoulders Condensed',sans-serif;
+    font-weight:700;
+    font-size:10px;
+    letter-spacing:0.1em;
+    padding:2px 7px;
+    text-transform:uppercase;
+  }
+  .tag.n{background:var(--new);color:#0b1a0b;}
+  .tag.g{background:var(--gone);color:#1a0b08;}
+  .tag.c{background:var(--changed);color:#1a1608;}
+  .addr{color:var(--ink);font-weight:500;}
+  .id{color:var(--ink-dim);}
+  .delta{font-size:11px;color:var(--changed);}
+  .delta .old{color:var(--ink-dim);text-decoration:line-through;margin-right:5px;}
+
+  .watch-btn{
+    background:transparent;
+    border:none;
+    color:var(--ink-dim);
+    font-size:15px;
+    line-height:1;
+    padding:2px 4px;
+    cursor:pointer;
+  }
+  .watch-btn:hover{color:var(--amber);}
+  .watch-btn.active{color:var(--amber);}
+  tr.watched-row td{box-shadow:inset 3px 0 0 var(--amber);}
+  tr.watched-row.gone-row td{box-shadow:inset 3px 0 0 var(--gone);}
+
+  .roster-toggle{
+    color:var(--olive);
+    font-size:12px;
+    cursor:pointer;
+    letter-spacing:0.06em;
+    user-select:none;
+  }
+  .roster-toggle:hover{color:var(--amber);}
+  .footer-note{
+    font-size:11px;
+    color:var(--ink-dim);
+    text-align:center;
+    padding-top:8px;
+    letter-spacing:0.03em;
+  }
+
+  .dossier-card{
+    border:1px solid var(--border);
+    background:var(--panel-raised);
+    margin-bottom:10px;
+    padding:14px 16px;
+  }
+  .dossier-card.watched{box-shadow:inset 3px 0 0 var(--amber);}
+  .dossier-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    cursor:pointer;
+  }
+  .dossier-addr{
+    font-weight:700;
+    color:var(--ink);
+    font-size:14px;
+  }
+  .dossier-meta{
+    font-size:11.5px;
+    color:var(--ink-dim);
+    margin-top:4px;
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .dossier-rent{
+    font-family:'Big Shoulders Condensed',sans-serif;
+    font-weight:800;
+    font-size:20px;
+    color:var(--amber);
+    white-space:nowrap;
+  }
+  .dossier-body{
+    margin-top:12px;
+    padding-top:12px;
+    border-top:1px solid var(--border);
+    font-size:12px;
+    line-height:1.6;
+    display:none;
+  }
+  .dossier-body.open{display:block;}
+  .dossier-body .fieldgrid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
+    gap:6px 16px;
+    margin-bottom:12px;
+  }
+  .dossier-body .fieldgrid div b{color:var(--olive);font-weight:600;display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;}
+  .dossier-body .desc{color:var(--ink);margin-bottom:10px;}
+  .dossier-body .amenities{color:var(--ink-dim);}
+  .dossier-empty{color:var(--ink-dim);font-size:13px;}
+
+  .tabnav{
+    display:flex;
+    gap:2px;
+    margin-top:18px;
+  }
+  .tab-btn{
+    font-family:'Big Shoulders Condensed',sans-serif;
+    font-weight:700;
+    letter-spacing:0.1em;
+    font-size:14px;
+    text-transform:uppercase;
+    background:transparent;
+    color:var(--ink-dim);
+    border:1.5px solid var(--border-bright);
+    border-bottom:none;
+    padding:9px 20px;
+    cursor:pointer;
+  }
+  .tab-btn:hover{color:var(--ink);}
+  .tab-btn.active{
+    background:var(--panel);
+    color:var(--amber);
+    border-color:var(--amber-dim);
+  }
+  #libraryCount{color:var(--olive);font-weight:400;}
+
+  #librarySearch{
+    width:100%;
+    background:#080a06;
+    border:1px solid var(--border);
+    color:var(--ink);
+    font-family:'JetBrains Mono',monospace;
+    font-size:12.5px;
+    padding:10px 12px;
+  }
+  #librarySearch:focus{outline:1.5px solid var(--amber-dim);}
+  #librarySearch::placeholder{color:#3d4432;}
+
+  .chart-svg{width:100%;height:auto;display:block;}
+  .chart-svg .gridline{stroke:var(--border);stroke-width:1;}
+  .chart-svg .zeroline{stroke:var(--border-bright);stroke-width:1;}
+  .chart-svg .totalline{fill:none;stroke:var(--amber);stroke-width:2;}
+  .chart-svg .totalarea{fill:var(--amber);opacity:0.08;}
+  .chart-svg .totaldot{fill:var(--amber);}
+  .chart-svg .axislabel{fill:var(--ink-dim);font-family:'JetBrains Mono',monospace;font-size:9px;}
+  .chart-svg .bar-new{fill:var(--new);}
+  .chart-svg .bar-gone{fill:var(--gone);}
+  .chart-svg .bar-new:hover, .chart-svg .bar-gone:hover{opacity:0.75;}
+
+  .stat-row{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
+    gap:1px;
+    background:var(--border);
+    border:1px solid var(--border);
+    margin-bottom:16px;
+  }
+  .stat-cell{
+    background:var(--panel);
+    padding:14px 16px;
+  }
+  .stat-cell .stat-label{
+    font-size:10px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    margin-bottom:6px;
+  }
+  .stat-cell .stat-value{
+    font-family:'Big Shoulders Condensed',sans-serif;
+    font-weight:800;
+    font-size:26px;
+    color:var(--ink);
+  }
+  .stat-cell .stat-value.up{color:var(--new);}
+  .stat-cell .stat-value.down{color:var(--gone);}
+  .chart-legend{
+    display:flex;
+    gap:16px;
+    font-size:11px;
+    color:var(--ink-dim);
+    margin-top:10px;
+    letter-spacing:0.04em;
+  }
+  .chart-legend span{display:inline-flex;align-items:center;gap:6px;}
+  .legend-swatch{width:10px;height:10px;display:inline-block;}
+
+  .photo-thumb{
+    width:96px;
+    height:72px;
+    object-fit:cover;
+    cursor:zoom-in;
+    border:1px solid var(--border-bright);
+    display:block;
+    transition:transform 0.1s ease, border-color 0.1s ease;
+  }
+  .photo-thumb:hover{transform:scale(1.04);border-color:var(--amber-dim);}
+  .photo-placeholder{
+    width:96px;
+    height:72px;
+    background:var(--panel-raised);
+    border:1px dashed var(--border);
+    display:block;
+  }
+  .photo-thumb-lg{
+    width:180px;
+    height:135px;
+    object-fit:cover;
+    cursor:zoom-in;
+    border:1px solid var(--border-bright);
+    flex-shrink:0;
+    transition:transform 0.1s ease, border-color 0.1s ease;
+  }
+  .photo-thumb-lg:hover{transform:scale(1.02);border-color:var(--amber-dim);}
+  .photo-placeholder-lg{
+    width:180px;
+    height:135px;
+    background:var(--panel-raised);
+    border:1px dashed var(--border);
+    flex-shrink:0;
+  }
+  .dossier-head-row{display:flex;gap:16px;align-items:flex-start;}
+  #photoDocxInput{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    color:var(--ink-dim);
+  }
+  .lightbox-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(4,5,3,0.9);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+    cursor:zoom-out;
+  }
+  .lightbox-overlay img{
+    max-width:90vw;
+    max-height:90vh;
+    border:2px solid var(--amber-dim);
+  }
+
+  .row input[type="text"]{
+    background:#080a06;
+    border:1px solid var(--border);
+    color:var(--ink);
+    font-family:'JetBrains Mono',monospace;
+    font-size:12.5px;
+    padding:9px 10px;
+  }
+  .row input[type="text"]:focus{outline:1.5px solid var(--amber-dim);}
+  .row input[type="text"]::placeholder{color:#3d4432;}
+
+  .pv-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:12px 14px;
+    border:1px solid var(--border);
+    background:var(--panel-raised);
+    margin-bottom:8px;
+  }
+  .pv-row.removed{opacity:0.55;}
+  .pv-row.removed .pv-addr{text-decoration:line-through;text-decoration-color:var(--gone);}
+  .pv-order{
+    font-family:'Big Shoulders Condensed',sans-serif;
+    font-weight:800;
+    font-size:22px;
+    color:var(--amber-dim);
+    width:28px;
+    text-align:center;
+    flex-shrink:0;
+  }
+  .pv-body{flex:1;min-width:0;}
+  .pv-addr{font-weight:700;color:var(--ink);font-size:13.5px;}
+  .pv-meta{
+    font-size:11.5px;
+    color:var(--ink-dim);
+    margin-top:3px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .pv-meta a{color:var(--olive);}
+  .pv-controls{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+  .pv-controls button{
+    background:transparent;
+    border:1px solid var(--border-bright);
+    color:var(--ink-dim);
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    padding:5px 8px;
+    cursor:pointer;
+  }
+  .pv-controls button:hover{color:var(--ink);border-color:var(--olive);}
+  .pv-status-btn{text-transform:uppercase;letter-spacing:0.06em;font-size:10px;}
+  .pv-status-btn.st-to-view{color:var(--ink-dim);}
+  .pv-status-btn.st-scheduled{color:var(--changed);border-color:var(--changed)!important;}
+  .pv-status-btn.st-viewed{color:var(--new);border-color:var(--new)!important;}
+  .pv-status-btn.st-removed{color:var(--gone);border-color:var(--gone)!important;}
+  .pv-del{color:var(--gone)!important;}
+
+  .criteria-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));
+    gap:1px;
+    background:var(--border);
+    border:1px solid var(--border);
+  }
+  .criteria-card{
+    background:var(--panel);
+    padding:16px 18px;
+  }
+  .criteria-card.multiple{background:var(--panel-raised);}
+  .criteria-card h3{
+    font-family:'Big Shoulders Condensed',sans-serif;
+    font-weight:700;
+    letter-spacing:0.08em;
+    font-size:16px;
+    text-transform:uppercase;
+    color:var(--amber);
+    margin:0 0 12px;
+  }
+  .criteria-card ul{
+    margin:0;
+    padding-left:18px;
+    font-size:12.5px;
+    line-height:1.9;
+    color:var(--ink);
+  }
+  .criteria-card textarea{
+    width:100%;
+    min-height:120px;
+    background:#080a06;
+    border:1px solid var(--border);
+    color:var(--ink);
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    padding:10px;
+    margin-top:8px;
+  }
+  .criteria-edit-btn{
+    background:transparent;
+    border:1px solid var(--border-bright);
+    color:var(--ink-dim);
+    font-size:10px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:4px 9px;
+    cursor:pointer;
+    margin-top:10px;
+  }
+  .criteria-edit-btn:hover{color:var(--ink);border-color:var(--olive);}
+</style>
+</head>
+<body>
+
+
+<div class="board" id="board">
+  <div class="masthead">
+    <div class="eyebrow">SETAF-AF // JFC BRUNSSUM RELOCATION</div>
+    <h1>HOUSING <span>SITREP</span></h1>
+    <div class="sub" id="baselineInfo">No baseline on file. Paste today's Homes.mil export below to establish one.</div>
+    <div class="stampline" id="tallyStamps"></div>
+    <div class="tabnav">
+      <button class="tab-btn active" id="tabSitrepBtn" data-tab="sitrep">SITREP</button>
+      <button class="tab-btn" id="tabLibraryBtn" data-tab="library">Library <span id="libraryCount"></span></button>
+      <button class="tab-btn" id="tabTrendsBtn" data-tab="trends">Trends <span id="trendsCount"></span></button>
+      <button class="tab-btn" id="tabToViewBtn" data-tab="toview">To View <span id="toViewCount"></span></button>
+      <button class="tab-btn" id="tabCriteriaBtn" data-tab="criteria">Priorities</button>
+    </div>
+  </div>
+
+  <div class="body-grid">
+    <div id="sitrepSection">
+    <div class="panel">
+      <div class="panel-title">Dispatch Input</div>
+      <textarea id="pasteArea" placeholder="Paste the full Homes.mil listing dump here, exactly as copied..."></textarea>
+      <div class="row">
+        <button id="processBtn">Process Dispatch</button>
+        <button class="ghost" id="clearBaselineBtn">Clear Baseline</button>
+        <span class="status-msg" id="statusMsg"></span>
+      </div>
+    </div>
+
+    <div id="resultsWrap"></div>
+    </div>
+
+    <div id="librarySection" style="display:none;">
+    <div class="panel">
+      <div class="panel-title">Dossier Intake</div>
+      <div class="status-msg" style="margin-bottom:10px;">Paste full detail pages (the expanded listing view with contact info, property details, costs). Multiple listings in one paste are fine. German listings are skipped automatically.</div>
+      <textarea id="dossierArea" placeholder="Paste one or more full Homes.mil detail pages here..."></textarea>
+      <div class="row">
+        <button id="saveDossiersBtn">Save Dossiers</button>
+        <span class="status-msg" id="dossierStatusMsg"></span>
+      </div>
+    </div>
+
+    <div class="panel" id="librarySearchPanel" style="display:none;">
+      <input type="text" id="librarySearch" placeholder="Filter by city, type, or listing ID...">
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Photo Import</div>
+      <div class="status-msg" style="margin-bottom:10px;">Upload the Homes.mil .docx export. Photos are matched to listings by Listing ID and stored for thumbnails across the tracker.</div>
+      <input type="file" id="photoDocxInput" accept=".docx">
+      <div class="row">
+        <span class="status-msg" id="photoStatusMsg"></span>
+      </div>
+    </div>
+
+    <div id="dossierWrap"></div>
+    </div>
+
+    <div id="trendsSection" style="display:none;">
+      <div id="trendsWrap"></div>
+    </div>
+
+    <div id="toViewSection" style="display:none;">
+      <div class="panel">
+        <div class="panel-title">Add a Home to the List</div>
+        <div class="row" style="flex-wrap:wrap;">
+          <input type="text" id="pvAddress" placeholder="Address / name" style="flex:2;min-width:200px;">
+          <input type="text" id="pvPrice" placeholder="Rent €" style="flex:1;min-width:90px;">
+          <input type="text" id="pvSource" placeholder="Source (Homes.mil, Funda, Pararius...)" style="flex:1;min-width:150px;">
+        </div>
+        <div class="row" style="flex-wrap:wrap;">
+          <input type="text" id="pvNote" placeholder="Note (optional)" style="flex:2;min-width:200px;">
+          <input type="text" id="pvLink" placeholder="Link URL (optional)" style="flex:2;min-width:200px;">
+          <input type="text" id="pvListingId" placeholder="Listing ID (optional, links photo)" style="flex:1;min-width:150px;">
+        </div>
+        <div class="row">
+          <button id="pvAddBtn">Add to List</button>
+          <span class="status-msg" id="pvStatusMsg"></span>
+        </div>
+      </div>
+      <div id="priorityHomesWrap"></div>
+    </div>
+
+    <div id="criteriaSection" style="display:none;">
+      <div id="criteriaWrap"></div>
+    </div>
+  </div>
+</div>
+
+<div id="authOverlay" class="lightbox-overlay" style="display:none;">
+  <div style="background:var(--panel); border:1px solid var(--amber-dim); padding:26px 30px; width:280px; text-align:left;">
+    <div style="font-family:'Big Shoulders Condensed',sans-serif; font-weight:800; letter-spacing:0.08em; color:var(--amber); font-size:18px; text-transform:uppercase; margin-bottom:14px;">Access Code</div>
+    <input type="password" id="authPasswordInput" placeholder="Password" style="width:100%; background:#080a06; border:1px solid var(--border); color:var(--ink); font-family:'JetBrains Mono',monospace; font-size:12.5px; padding:9px 10px; margin-bottom:10px; box-sizing:border-box;">
+    <div id="authError" style="color:var(--gone); font-size:11px; margin-bottom:10px; min-height:14px;"></div>
+    <button id="authSubmitBtn" style="width:100%;">Enter</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  let authResolvers = [];
+  let authShowing = false;
+
+  function showAuthOverlay(){
+    document.getElementById('authOverlay').style.display = 'flex';
+    document.getElementById('authPasswordInput').focus();
+  }
+  function hideAuthOverlay(){
+    document.getElementById('authOverlay').style.display = 'none';
+    document.getElementById('authPasswordInput').value = '';
+    document.getElementById('authError').textContent = '';
+  }
+  function promptLogin(){
+    return new Promise((resolve) => {
+      authResolvers.push(resolve);
+      if (!authShowing){
+        authShowing = true;
+        showAuthOverlay();
+      }
+    });
+  }
+  async function submitAuth(){
+    const pwInput = document.getElementById('authPasswordInput');
+    const errEl = document.getElementById('authError');
+    const pw = pwInput.value;
+    errEl.textContent = 'Checking...';
+    try{
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'include',
+        body: JSON.stringify({password: pw})
+      });
+      if (res.ok){
+        authShowing = false;
+        hideAuthOverlay();
+        const resolvers = authResolvers.slice();
+        authResolvers = [];
+        resolvers.forEach(r => r());
+      } else {
+        errEl.textContent = 'Incorrect password.';
+      }
+    } catch(e){
+      errEl.textContent = 'Connection error. Try again.';
+    }
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('authSubmitBtn').addEventListener('click', submitAuth);
+    document.getElementById('authPasswordInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitAuth();
+    });
+  });
+
+  async function apiFetch(url, opts){
+    opts = opts || {};
+    opts.credentials = 'include';
+    let res = await fetch(url, opts);
+    if (res.status === 401){
+      await promptLogin();
+      res = await fetch(url, opts);
+    }
+    return res;
+  }
+
+  window.storage = {
+    async get(key){
+      const res = await apiFetch('/api/storage?key=' + encodeURIComponent(key));
+      if (res.status === 404) throw new Error('not found');
+      if (!res.ok) throw new Error('storage get failed');
+      const data = await res.json();
+      return {key: data.key, value: data.value, shared: true};
+    },
+    async set(key, value){
+      const res = await apiFetch('/api/storage', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({key, value})
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return {key: data.key, value: data.value, shared: true};
+    },
+    async delete(key){
+      const res = await apiFetch('/api/storage?key=' + encodeURIComponent(key), {method: 'DELETE'});
+      if (!res.ok) return null;
+      const data = await res.json();
+      return {key: data.key, deleted: true, shared: true};
+    },
+    async list(prefix){
+      const res = await apiFetch('/api/storage?list=1&prefix=' + encodeURIComponent(prefix || ''));
+      if (!res.ok) return null;
+      const data = await res.json();
+      return {keys: data.keys, prefix: prefix, shared: true};
+    }
+  };
+})();
+</script>
+
+<script>
+(function(){
+  const pasteArea = document.getElementById('pasteArea');
+  const processBtn = document.getElementById('processBtn');
+  const clearBtn = document.getElementById('clearBaselineBtn');
+  const statusMsg = document.getElementById('statusMsg');
+  const baselineInfo = document.getElementById('baselineInfo');
+  const tallyStamps = document.getElementById('tallyStamps');
+  const resultsWrap = document.getElementById('resultsWrap');
+  const dossierArea = document.getElementById('dossierArea');
+  const saveDossiersBtn = document.getElementById('saveDossiersBtn');
+  const dossierStatusMsg = document.getElementById('dossierStatusMsg');
+  const dossierWrap = document.getElementById('dossierWrap');
+  const board = document.getElementById('board');
+  const tabSitrepBtn = document.getElementById('tabSitrepBtn');
+  const tabLibraryBtn = document.getElementById('tabLibraryBtn');
+  const tabTrendsBtn = document.getElementById('tabTrendsBtn');
+  const sitrepSection = document.getElementById('sitrepSection');
+  const librarySection = document.getElementById('librarySection');
+  const trendsSection = document.getElementById('trendsSection');
+  const trendsWrap = document.getElementById('trendsWrap');
+  const trendsCount = document.getElementById('trendsCount');
+  const libraryCount = document.getElementById('libraryCount');
+  const librarySearch = document.getElementById('librarySearch');
+  const librarySearchPanel = document.getElementById('librarySearchPanel');
+  const photoDocxInput = document.getElementById('photoDocxInput');
+  const photoStatusMsg = document.getElementById('photoStatusMsg');
+  const tabToViewBtn = document.getElementById('tabToViewBtn');
+  const tabCriteriaBtn = document.getElementById('tabCriteriaBtn');
+  const toViewSection = document.getElementById('toViewSection');
+  const criteriaSection = document.getElementById('criteriaSection');
+  const priorityHomesWrap = document.getElementById('priorityHomesWrap');
+  const toViewCount = document.getElementById('toViewCount');
+  const criteriaWrap = document.getElementById('criteriaWrap');
+  const pvAddress = document.getElementById('pvAddress');
+  const pvPrice = document.getElementById('pvPrice');
+  const pvSource = document.getElementById('pvSource');
+  const pvNote = document.getElementById('pvNote');
+  const pvLink = document.getElementById('pvLink');
+  const pvListingId = document.getElementById('pvListingId');
+  const pvAddBtn = document.getElementById('pvAddBtn');
+  const pvStatusMsg = document.getElementById('pvStatusMsg');
+
+  const TAB_SECTIONS = {sitrep: sitrepSection, library: librarySection, trends: trendsSection, toview: toViewSection, criteria: criteriaSection};
+  const TAB_BTNS = {sitrep: tabSitrepBtn, library: tabLibraryBtn, trends: tabTrendsBtn, toview: tabToViewBtn, criteria: tabCriteriaBtn};
+
+  function setActiveTab(tab){
+    Object.keys(TAB_SECTIONS).forEach(key => {
+      TAB_SECTIONS[key].style.display = (key === tab) ? '' : 'none';
+      TAB_BTNS[key].classList.toggle('active', key === tab);
+    });
+  }
+  tabSitrepBtn.addEventListener('click', () => setActiveTab('sitrep'));
+  tabLibraryBtn.addEventListener('click', () => setActiveTab('library'));
+  tabTrendsBtn.addEventListener('click', () => setActiveTab('trends'));
+  tabToViewBtn.addEventListener('click', () => setActiveTab('toview'));
+  tabCriteriaBtn.addEventListener('click', () => setActiveTab('criteria'));
+
+
+  const STORE_KEY = 'brunssum-latest-snapshot';
+  const WATCH_KEY = 'brunssum-watchlist';
+  const DOSSIER_KEY = 'brunssum-dossiers';
+  const HISTORY_KEY = 'brunssum-history';
+  const PHOTO_KEY = 'brunssum-photos';
+  const PRIORITY_KEY = 'brunssum-priority-homes';
+  const CRITERIA_KEY = 'brunssum-criteria';
+
+  let watchMap = {};       // { [listingId]: lastKnownRecord }
+  let lastCurrList = null; // most recent full listing set we know about
+  let lastDiff = null;     // most recent computed diff, if any
+  let historyMap = {};     // { [YYYY-MM-DD]: {total, added, removed, changed, savedAt} }
+  let photoMap = {};       // { [listingId]: dataURI }
+  let priorityHomes = null; // ordered array of {id, address, price, source, note, link, listingId, status}
+  let criteria = null;      // { anne:[], nick:[], alma:[], multiple:[] }
+
+  function setStatus(msg){ statusMsg.textContent = msg; }
+
+  function fmtDate(iso){
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, {month:'short', day:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+  }
+
+  // ---------- Parser ----------
+  function parseListings(raw){
+    const rawLines = raw.split('\n').map(l => l.trim());
+    const lines = rawLines.filter(l => l.length > 0);
+
+    const records = [];
+    let headerBuf = [];
+    let recordBuf = [];
+    let inRecord = false;
+    let sawInspection = false;
+
+    for (const line of lines){
+      if (line === 'RENT €:'){
+        if (inRecord && recordBuf.length){
+          records.push(buildRecord(headerBuf, recordBuf));
+        }
+        headerBuf = [];
+        recordBuf = [line];
+        inRecord = true;
+        sawInspection = false;
+        continue;
+      }
+      if (!inRecord){
+        headerBuf.push(line);
+        continue;
+      }
+      recordBuf.push(line);
+      if (/^Inspection Status:/i.test(line)){
+        sawInspection = true;
+        continue;
+      }
+      if (sawInspection){
+        // this line is the address/location line closing out the record
+        records.push(buildRecord(headerBuf, recordBuf));
+        headerBuf = [];
+        recordBuf = [];
+        inRecord = false;
+        sawInspection = false;
+      }
+    }
+    if (inRecord && recordBuf.length){
+      records.push(buildRecord(headerBuf, recordBuf));
+    }
+    return records.filter(r => r.id);
+  }
+
+  function findAfter(lines, exact){
+    const idx = lines.findIndex(l => l === exact);
+    return idx >= 0 && idx + 1 < lines.length ? lines[idx+1] : '';
+  }
+
+  function buildRecord(headerLines, recordLines){
+    const lines = recordLines;
+    const propertyTypes = /^(HOUSE|APARTMENT|TOWNHOUSE|DUPLEX|CONDO|TOWNHOME)$/i;
+
+    const rentRaw = findAfter(lines, 'RENT €:');
+    const rentNum = parseInt((rentRaw.match(/[\d,]+/) || ['0'])[0].replace(/,/g,''), 10) || null;
+
+    const availableRaw = findAfter(lines, 'AVAILABLE TO LEASE:');
+
+    const typeLine = lines.find(l => propertyTypes.test(l)) || '';
+
+    const bedLine = lines.find(l => /^\d+\s*Bed/i.test(l)) || '';
+    const beds = (bedLine.match(/\d+/) || [''])[0];
+
+    const bathLine = lines.find(l => /Baths?\s*\(/i.test(l)) || '';
+    const baths = (bathLine.match(/^\d+/) || [''])[0];
+
+    const idLine = lines.find(l => /^Listing ID:/i.test(l)) || '';
+    const id = (idLine.match(/\d+/) || [''])[0];
+
+    const vacancyLine = lines.find(l => /^(VACANT|OCCUPIED)$/i.test(l)) || '';
+
+    const inspLine = lines.find(l => /^Inspection Status:/i.test(l)) || '';
+    const inspection = inspLine.replace(/^Inspection Status:\s*/i, '').trim();
+
+    const address = lines[lines.length - 1] || '';
+
+    const headerClean = headerLines.filter(h => h && h.toLowerCase() !== 'no photo available').join(' ').trim();
+
+    return {
+      id,
+      postal: headerClean,
+      rentRaw: rentRaw.replace(/\s*MONTHLY/i,'').trim(),
+      rentNum,
+      available: availableRaw,
+      type: typeLine,
+      beds,
+      baths,
+      vacancy: vacancyLine.toUpperCase(),
+      inspection,
+      address
+    };
+  }
+
+  // ---------- Diff ----------
+  function diffSnapshots(prevList, currList){
+    const prevMap = new Map((prevList||[]).map(r => [r.id, r]));
+    const currMap = new Map((currList||[]).map(r => [r.id, r]));
+
+    const added = [];
+    const removed = [];
+    const changed = [];
+    const unchanged = [];
+
+    for (const [id, rec] of currMap){
+      if (!prevMap.has(id)){
+        added.push(rec);
+      } else {
+        const prev = prevMap.get(id);
+        const deltas = [];
+        if (prev.rentRaw !== rec.rentRaw) deltas.push({field:'Rent', old: prev.rentRaw, now: rec.rentRaw});
+        if (prev.available !== rec.available) deltas.push({field:'Available', old: prev.available, now: rec.available});
+        if (prev.inspection !== rec.inspection) deltas.push({field:'Inspection', old: prev.inspection, now: rec.inspection});
+        if (prev.vacancy !== rec.vacancy) deltas.push({field:'Status', old: prev.vacancy, now: rec.vacancy});
+        if (deltas.length){
+          changed.push({rec, deltas});
+        } else {
+          unchanged.push(rec);
+        }
+      }
+    }
+    for (const [id, rec] of prevMap){
+      if (!currMap.has(id)) removed.push(rec);
+    }
+    return {added, removed, changed, unchanged};
+  }
+
+  // ---------- Rendering ----------
+  function photoCellHTML(id){
+    const src = photoMap[id];
+    if (src){
+      return `<img class="photo-thumb" src="${src}" data-photo-id="${escapeHTML(id)}" alt="">`;
+    }
+    return `<div class="photo-placeholder"></div>`;
+  }
+
+  function rowHTML(rec, cls, tag, deltaHTML){
+    const watched = !!watchMap[rec.id];
+    const rowCls = (cls || '') + (watched ? ' watched-row' : '');
+    return `<tr class="${rowCls}">
+      <td>${photoCellHTML(rec.id)}</td>
+      <td><button class="watch-btn ${watched ? 'active' : ''}" data-id="${escapeHTML(rec.id)}" title="${watched ? 'Remove from watchlist' : 'Add to watchlist'}">${watched ? '★' : '☆'}</button></td>
+      <td>${tag||''}</td>
+      <td class="addr">${escapeHTML(rec.address || rec.postal || '—')}</td>
+      <td>${escapeHTML(rec.type)}</td>
+      <td>${escapeHTML(rec.beds)}bd / ${escapeHTML(rec.baths)}ba</td>
+      <td>€${rec.rentNum ? rec.rentNum.toLocaleString() : escapeHTML(rec.rentRaw)}</td>
+      <td>${escapeHTML(rec.available)}</td>
+      <td>${escapeHTML(rec.inspection)}</td>
+      <td class="id">${escapeHTML(rec.id)}</td>
+      <td>${deltaHTML || ''}</td>
+    </tr>`;
+  }
+
+  function escapeHTML(s){
+    return (s||'').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function tableShell(rowsHTML){
+    return `<table>
+      <thead><tr>
+        <th></th><th></th><th></th><th>Location</th><th>Type</th><th>Config</th><th>Rent</th><th>Available</th><th>Inspection</th><th>ID</th><th>Delta</th>
+      </tr></thead>
+      <tbody>${rowsHTML}</tbody>
+    </table>`;
+  }
+
+
+  function sortWatchFirst(arr, getId){
+    return arr.slice().sort((a, b) => {
+      const wa = watchMap[getId(a)] ? 1 : 0;
+      const wb = watchMap[getId(b)] ? 1 : 0;
+      return wb - wa;
+    });
+  }
+
+  function renderWatchlistPanel(currList){
+    const ids = Object.keys(watchMap);
+    if (!ids.length) return '';
+    const known = Array.isArray(currList);
+    const items = ids.map(id => {
+      const activeRec = known ? currList.find(r => r.id === id) : null;
+      const rec = activeRec || watchMap[id];
+      const status = !known ? 'unknown' : (activeRec ? 'active' : 'gone');
+      return {rec, status};
+    });
+    items.sort((a, b) => {
+      const rank = s => (s === 'gone' ? 0 : s === 'unknown' ? 1 : 2);
+      return rank(a.status) - rank(b.status);
+    });
+    const goneCount = items.filter(i => i.status === 'gone').length;
+    const rowsHTML = items.map(({rec, status}) => {
+      const tag = status === 'gone'
+        ? '<span class="tag g">GONE</span>'
+        : status === 'unknown'
+          ? '<span class="tag" style="background:var(--olive);color:#10140b;">TRACKED</span>'
+          : '<span class="tag" style="background:var(--amber);color:#1a1200;">WATCH</span>';
+      const cls = status === 'gone' ? 'gone-row' : '';
+      return rowHTML(rec, cls, tag);
+    }).join('');
+    const alertText = goneCount
+      ? ` <span style="color:var(--gone);font-weight:700;">— ${goneCount} NO LONGER LISTED</span>`
+      : '';
+    return `<div class="panel">
+      <div class="panel-title">Watchlist (${items.length})${alertText}</div>
+      ${tableShell(rowsHTML)}
+    </div>`;
+  }
+
+  function renderResults(diff, currList, prevExists, snapshotDate){
+    let html = '';
+    html += renderWatchlistPanel(currList);
+
+    if (!prevExists){
+      html += `<div class="panel">
+        <div class="panel-title">Baseline Established</div>
+        <div class="empty">${currList.length} listings recorded as the starting point. Paste tomorrow's dump to see what moved.</div>
+      </div>`;
+      resultsWrap.innerHTML = html;
+      renderRoster(currList);
+      return;
+    }
+
+    const added = sortWatchFirst(diff.added, r => r.id);
+    const changed = sortWatchFirst(diff.changed, c => c.rec.id);
+    const removed = sortWatchFirst(diff.removed, r => r.id);
+
+    // New
+    html += `<div class="panel"><div class="panel-title">New On Market (${added.length})</div>`;
+    html += added.length
+      ? tableShell(added.map(r => rowHTML(r, 'new-row', '<span class="tag n">NEW</span>')).join(''))
+      : `<div class="empty">No new listings since last check.</div>`;
+    html += `</div>`;
+
+    // Changed
+    html += `<div class="panel"><div class="panel-title">Changed (${changed.length})</div>`;
+    html += changed.length
+      ? tableShell(changed.map(({rec, deltas}) => {
+          const deltaHTML = deltas.map(d => `<div class="delta"><span class="old">${escapeHTML(d.field)}: ${escapeHTML(d.old||'—')}</span> → ${escapeHTML(d.now||'—')}</div>`).join('');
+          return rowHTML(rec, 'changed-row', '<span class="tag c">CHG</span>', deltaHTML);
+        }).join(''))
+      : `<div class="empty">No changes to existing listings.</div>`;
+    html += `</div>`;
+
+    // Gone
+    html += `<div class="panel"><div class="panel-title">Delisted / Gone (${removed.length})</div>`;
+    html += removed.length
+      ? tableShell(removed.map(r => rowHTML(r, 'gone-row', '<span class="tag g">GONE</span>')).join(''))
+      : `<div class="empty">Nothing dropped off since last check.</div>`;
+    html += `</div>`;
+
+    resultsWrap.innerHTML = html;
+    renderRoster(currList);
+
+    // tally stamps
+    tallyStamps.innerHTML = `
+      <div class="stamp n"><b>${diff.added.length}</b> NEW</div>
+      <div class="stamp c"><b>${diff.changed.length}</b> CHANGED</div>
+      <div class="stamp g"><b>${diff.removed.length}</b> GONE</div>
+      <div class="stamp"><b>${currList.length}</b> TOTAL ACTIVE</div>
+    `;
+  }
+
+  function renderRoster(currList){
+    const rosterPanel = document.createElement('div');
+    rosterPanel.className = 'panel';
+    const sorted = [...currList].sort((a,b) => {
+      const wa = watchMap[a.id] ? 1 : 0;
+      const wb = watchMap[b.id] ? 1 : 0;
+      if (wa !== wb) return wb - wa;
+      return (a.address||'').localeCompare(b.address||'');
+    });
+    rosterPanel.innerHTML = `
+      <div class="panel-title">
+        <span class="roster-toggle" id="rosterToggle">▸ Full Current Roster (${currList.length})</span>
+      </div>
+      <div id="rosterTable" style="display:none;margin-top:8px;">
+        ${tableShell(sorted.map(r => rowHTML(r, '', '')).join(''))}
+      </div>
+    `;
+    resultsWrap.appendChild(rosterPanel);
+    document.getElementById('rosterToggle').addEventListener('click', () => {
+      const t = document.getElementById('rosterTable');
+      const toggle = document.getElementById('rosterToggle');
+      const open = t.style.display !== 'none';
+      t.style.display = open ? 'none' : 'block';
+      toggle.textContent = (open ? '▸' : '▾') + ` Full Current Roster (${currList.length})`;
+    });
+  }
+
+  // ---------- Storage ----------
+  async function loadSnapshot(){
+    try{
+      const res = await window.storage.get(STORE_KEY, false);
+      if (res && res.value) return JSON.parse(res.value);
+      return null;
+    } catch(e){
+      return null;
+    }
+  }
+
+  async function saveSnapshot(list){
+    const payload = { savedAt: new Date().toISOString(), listings: list };
+    try{
+      await window.storage.set(STORE_KEY, JSON.stringify(payload), false);
+    } catch(e){
+      setStatus('Storage error — snapshot not saved. Try again.');
+    }
+    return payload;
+  }
+
+  async function loadWatch(){
+    try{
+      const res = await window.storage.get(WATCH_KEY, false);
+      if (res && res.value) return JSON.parse(res.value);
+      return {};
+    } catch(e){
+      return {};
+    }
+  }
+
+  async function saveWatch(map){
+    try{
+      await window.storage.set(WATCH_KEY, JSON.stringify(map), false);
+    } catch(e){
+      setStatus('Storage error — watchlist not saved. Try again.');
+    }
+  }
+
+  async function toggleWatch(id){
+    if (watchMap[id]){
+      delete watchMap[id];
+    } else {
+      const rec = (lastCurrList || []).find(r => r.id === id) || watchMap[id];
+      if (!rec) return;
+      watchMap[id] = rec;
+    }
+    await saveWatch(watchMap);
+    if (lastDiff){
+      renderResults(lastDiff, lastCurrList, true);
+    } else {
+      resultsWrap.innerHTML = renderWatchlistPanel(lastCurrList);
+    }
+    renderDossiers();
+  }
+
+  board.addEventListener('click', (e) => {
+    const photo = e.target.closest('.photo-thumb, .photo-thumb-lg');
+    if (photo){
+      openLightbox(photo.getAttribute('src'));
+      return;
+    }
+    const btn = e.target.closest('.watch-btn');
+    if (!btn) return;
+    toggleWatch(btn.dataset.id);
+  });
+
+  function openLightbox(src){
+    if (!src) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'lightbox-overlay';
+    overlay.innerHTML = `<img src="${src}" alt="">`;
+    overlay.addEventListener('click', () => overlay.remove());
+    document.body.appendChild(overlay);
+  }
+
+  // ---------- Dossier parsing ----------
+  const SECTION_HEADERS = new Set([
+    'Costs & Fees','Property Details','Location Details','Amenities',
+    'Contact Information','Other Features','Skip to End'
+  ]);
+
+  function valueAfterLabel(lines, label){
+    const idx = lines.findIndex(l => l === label);
+    if (idx < 0) return '';
+    for (let i = idx + 1; i < lines.length; i++){
+      const l = lines[i];
+      if (l === '') continue;
+      if (l.endsWith(':') || SECTION_HEADERS.has(l)) return '';
+      return l;
+    }
+    return '';
+  }
+
+  function parseKVRange(lines, startIdx, endIdx){
+    const out = [];
+    let i = startIdx;
+    while (i <= endIdx){
+      const l = lines[i];
+      if (l && l.endsWith(':')){
+        let j = i + 1;
+        while (j <= endIdx && lines[j] === '') j++;
+        if (j <= endIdx && lines[j] && !lines[j].endsWith(':')){
+          out.push(`${l.slice(0, -1)}: ${lines[j]}`);
+          i = j;
+        }
+      }
+      i++;
+    }
+    return out;
+  }
+
+  function isGermanListing(chunkText, cityLine){
+    if (/Rheinland-Pfalz/i.test(chunkText)) return true;
+    if (/\b\d{5}\b/.test(cityLine || '')) return true; // German postal codes are 5 digits, Dutch are 4+letters
+    return false;
+  }
+
+  function parseDossierBlock(chunkText){
+    const lines = chunkText.split('\n').map(l => l.trim());
+
+    const id = valueAfterLabel(lines, 'Listing ID:');
+    if (!id) return null;
+
+    const ciIdx = lines.findIndex(l => l === 'Contact Information');
+    let cityLine = '';
+    for (let i = ciIdx - 1; i >= 0; i--){
+      if (lines[i] !== ''){ cityLine = lines[i]; break; }
+    }
+
+    if (isGermanListing(chunkText, cityLine)) return {skippedGerman: true, id};
+
+    const availableMatch = chunkText.match(/AVAILABLE TO LEASE:\s*([A-Za-z]+\s+\d{2},\s*\d{4})/i);
+    const available = availableMatch ? availableMatch[1] : '';
+
+    const ofIdx = lines.findIndex(l => l === 'Other Features');
+    const pdIdx = lines.findIndex(l => l === 'Property Details');
+    let description = '';
+    if (ofIdx >= 0 && pdIdx > ofIdx){
+      description = lines.slice(ofIdx + 1, pdIdx).filter(Boolean).join(' ');
+    }
+
+    const amIdx = lines.findIndex(l => l === 'Amenities');
+    const seIdx = lines.findIndex(l => l === 'Skip to End');
+    const amenitiesText = (amIdx >= 0 && seIdx > amIdx)
+      ? parseKVRange(lines, amIdx + 1, seIdx - 1).join(' • ')
+      : '';
+
+    const rentRaw = valueAfterLabel(lines, 'Rent €:');
+    const rentNum = parseInt((rentRaw.match(/[\d,]+/) || ['0'])[0].replace(/,/g,''), 10) || null;
+
+    return {
+      id,
+      city: cityLine,
+      type: valueAfterLabel(lines, 'Property Type:'),
+      available,
+      rentRaw,
+      rentNum,
+      depositRaw: valueAfterLabel(lines, 'Deposit €:'),
+      beds: valueAfterLabel(lines, 'Bedrooms:'),
+      bathsFull: valueAfterLabel(lines, 'Baths, Full:'),
+      baths34: valueAfterLabel(lines, '3/4:'),
+      bathsHalf: valueAfterLabel(lines, '1/2:'),
+      sqft: valueAfterLabel(lines, 'Square Feet:'),
+      sqm: valueAfterLabel(lines, 'Square Meters:'),
+      furnished: valueAfterLabel(lines, 'Furnished:'),
+      yearBuilt: valueAfterLabel(lines, 'Year Built:'),
+      pets: valueAfterLabel(lines, 'Pets Allowed:'),
+      smoking: valueAfterLabel(lines, 'Smoking:'),
+      leaseTerm: valueAfterLabel(lines, 'Lease Term:'),
+      scra: valueAfterLabel(lines, 'SCRA/Mil Clause:'),
+      inspection: valueAfterLabel(lines, 'Inspection Status:'),
+      description,
+      amenitiesText,
+      savedAt: new Date().toISOString()
+    };
+  }
+
+  function parseDossiers(raw){
+    const chunks = raw.split(/Mobile-\s*Friendly/i).map(c => c.trim()).filter(Boolean);
+    const saved = [];
+    let skippedGerman = 0;
+    let skippedUnparsed = 0;
+    for (const chunk of chunks){
+      const rec = parseDossierBlock(chunk);
+      if (!rec){ skippedUnparsed++; continue; }
+      if (rec.skippedGerman){ skippedGerman++; continue; }
+      saved.push(rec);
+    }
+    return {saved, skippedGerman, skippedUnparsed};
+  }
+
+  // ---------- Dossier storage ----------
+  async function loadDossiers(){
+    try{
+      const res = await window.storage.get(DOSSIER_KEY, false);
+      if (res && res.value) return JSON.parse(res.value);
+      return {};
+    } catch(e){
+      return {};
+    }
+  }
+
+  async function saveDossiersToStore(map){
+    try{
+      await window.storage.set(DOSSIER_KEY, JSON.stringify(map), false);
+    } catch(e){
+      dossierStatusMsg.textContent = 'Storage error — dossiers not saved. Try again.';
+    }
+  }
+
+  let dossierMap = {};
+
+  function dossierField(label, value){
+    if (!value) return '';
+    return `<div><b>${escapeHTML(label)}</b>${escapeHTML(value)}</div>`;
+  }
+
+  function photoCellHTMLLg(id){
+    const src = photoMap[id];
+    if (src){
+      return `<img class="photo-thumb-lg" src="${src}" data-photo-id="${escapeHTML(id)}" alt="">`;
+    }
+    return `<div class="photo-placeholder-lg"></div>`;
+  }
+
+  function dossierCardHTML(rec){
+    const watched = !!watchMap[rec.id];
+    const bathParts = [rec.bathsFull, rec.baths34, rec.bathsHalf].filter(v => v !== '');
+    const bathSummary = bathParts.length ? `${bathParts[0]||0}F/${bathParts[1]||0}3Q/${bathParts[2]||0}H bath` : '';
+    return `<div class="dossier-card ${watched ? 'watched' : ''}" data-card-id="${escapeHTML(rec.id)}">
+      <div class="dossier-head dossier-head-row" data-toggle-id="${escapeHTML(rec.id)}">
+        ${photoCellHTMLLg(rec.id)}
+        <div style="flex:1;display:flex;justify-content:space-between;gap:12px;">
+        <div>
+          <div class="dossier-addr">
+            <button class="watch-btn ${watched ? 'active' : ''}" data-id="${escapeHTML(rec.id)}" title="${watched ? 'Remove from watchlist' : 'Add to watchlist'}">${watched ? '★' : '☆'}</button>
+            ${escapeHTML(rec.city || 'Unknown location')}
+          </div>
+          <div class="dossier-meta">
+            <span>${escapeHTML(rec.type)}</span>
+            <span>${escapeHTML(rec.beds)}bd${bathSummary ? ' / ' + bathSummary : ''}</span>
+            <span>${escapeHTML(rec.sqm)}m²</span>
+            <span>Avail ${escapeHTML(rec.available)}</span>
+            <span>ID ${escapeHTML(rec.id)}</span>
+          </div>
+        </div>
+        <div class="dossier-rent">€${rec.rentNum ? rec.rentNum.toLocaleString() : escapeHTML(rec.rentRaw)}</div>
+        </div>
+      </div>
+      <div class="dossier-body" id="dossier-body-${escapeHTML(rec.id)}">
+        <div class="fieldgrid">
+          ${dossierField('Furnished', rec.furnished)}
+          ${dossierField('Pets', rec.pets)}
+          ${dossierField('Smoking', rec.smoking)}
+          ${dossierField('Year Built', rec.yearBuilt)}
+          ${dossierField('Lease Term', rec.leaseTerm)}
+          ${dossierField('Deposit', rec.depositRaw ? '€' + rec.depositRaw : '')}
+          ${dossierField('SCRA/Mil Clause', rec.scra)}
+          ${dossierField('Inspection', rec.inspection)}
+        </div>
+        ${rec.description ? `<div class="desc">${escapeHTML(rec.description)}</div>` : ''}
+        ${rec.amenitiesText ? `<div class="amenities">${escapeHTML(rec.amenitiesText)}</div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  function renderDossiers(){
+    const ids = Object.keys(dossierMap);
+    libraryCount.textContent = ids.length ? `(${ids.length})` : '';
+    librarySearchPanel.style.display = ids.length ? '' : 'none';
+    if (!ids.length){
+      dossierWrap.innerHTML = '';
+      return;
+    }
+    const filterText = (librarySearch.value || '').trim().toLowerCase();
+    let list = ids.map(id => dossierMap[id]);
+    if (filterText){
+      list = list.filter(r => {
+        const hay = `${r.city} ${r.type} ${r.id}`.toLowerCase();
+        return hay.includes(filterText);
+      });
+    }
+    const sorted = list.sort((a, b) => {
+      const wa = watchMap[a.id] ? 1 : 0;
+      const wb = watchMap[b.id] ? 1 : 0;
+      if (wa !== wb) return wb - wa;
+      return (a.rentNum || 0) - (b.rentNum || 0);
+    });
+    const heading = filterText ? `Property Dossiers (${sorted.length} of ${ids.length})` : `Property Dossiers (${ids.length})`;
+    dossierWrap.innerHTML = `<div class="panel">
+      <div class="panel-title">${heading}</div>
+      ${sorted.length ? sorted.map(dossierCardHTML).join('') : '<div class="dossier-empty">No dossiers match that filter.</div>'}
+    </div>`;
+  }
+
+  librarySearch.addEventListener('input', renderDossiers);
+
+  dossierWrap.addEventListener('click', (e) => {
+    if (e.target.closest('.watch-btn')) return; // handled by board-level delegation
+    if (e.target.closest('.photo-thumb-lg')) return; // handled by board-level lightbox
+    const head = e.target.closest('[data-toggle-id]');
+    if (!head) return;
+    const body = document.getElementById(`dossier-body-${head.dataset.toggleId}`);
+    if (body) body.classList.toggle('open');
+  });
+
+  saveDossiersBtn.addEventListener('click', async () => {
+    const raw = dossierArea.value;
+    if (!raw.trim()){
+      dossierStatusMsg.textContent = 'Paste one or more detail pages first.';
+      return;
+    }
+    dossierStatusMsg.textContent = 'Parsing dossiers...';
+    const {saved, skippedGerman, skippedUnparsed} = parseDossiers(raw);
+    if (!saved.length && !skippedGerman){
+      dossierStatusMsg.textContent = 'No listing detail pages recognized in that paste.';
+      return;
+    }
+    for (const rec of saved){
+      dossierMap[rec.id] = rec;
+    }
+    await saveDossiersToStore(dossierMap);
+    renderDossiers();
+    setActiveTab('library');
+    const parts = [`${saved.length} dossier${saved.length === 1 ? '' : 's'} saved.`];
+    if (skippedGerman) parts.push(`${skippedGerman} German listing${skippedGerman === 1 ? '' : 's'} skipped.`);
+    if (skippedUnparsed) parts.push(`${skippedUnparsed} block${skippedUnparsed === 1 ? '' : 's'} unrecognized.`);
+    dossierStatusMsg.textContent = parts.join(' ');
+    dossierArea.value = '';
+  });
+
+  // ---------- History storage ----------
+  function dateKeyFromISO(iso){
+    return iso.slice(0, 10);
+  }
+
+  async function loadHistory(){
+    try{
+      const res = await window.storage.get(HISTORY_KEY, false);
+      if (res && res.value) return JSON.parse(res.value);
+      return {};
+    } catch(e){
+      return {};
+    }
+  }
+
+  async function saveHistoryToStore(map){
+    try{
+      await window.storage.set(HISTORY_KEY, JSON.stringify(map), false);
+    } catch(e){
+      setStatus('Storage error — history not saved.');
+    }
+  }
+
+  async function recordHistory(saved, diff, total){
+    const key = dateKeyFromISO(saved.savedAt);
+    historyMap[key] = {
+      date: key,
+      total,
+      added: diff.added.length,
+      removed: diff.removed.length,
+      changed: diff.changed.length,
+      savedAt: saved.savedAt
+    };
+    const keys = Object.keys(historyMap).sort();
+    if (keys.length > 200){
+      keys.slice(0, keys.length - 200).forEach(k => delete historyMap[k]);
+    }
+    await saveHistoryToStore(historyMap);
+    renderTrends();
+  }
+
+  // ---------- Trends charts ----------
+  function shortDate(dateStr){
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString(undefined, {month:'numeric', day:'numeric'});
+  }
+
+  function buildLineChart(sorted){
+    const W = 760, H = 200, padL = 34, padR = 14, padT = 14, padB = 26;
+    const totals = sorted.map(h => h.total);
+    const maxTotal = Math.max(...totals, 1);
+    const minTotal = Math.min(...totals, 0);
+    const range = (maxTotal - minTotal) || 1;
+    const n = sorted.length;
+    const xFor = i => n === 1 ? (padL + (W - padL - padR) / 2) : padL + (i / (n - 1)) * (W - padL - padR);
+    const yFor = v => H - padB - ((v - minTotal) / range) * (H - padT - padB);
+
+    const points = sorted.map((h, i) => [xFor(i), yFor(h.total)]);
+    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+    const areaPath = `${linePath} L${points[points.length-1][0].toFixed(1)},${H-padB} L${points[0][0].toFixed(1)},${H-padB} Z`;
+
+    const gridCount = 4;
+    let gridLines = '';
+    for (let g = 0; g <= gridCount; g++){
+      const val = minTotal + (range * g / gridCount);
+      const y = yFor(val);
+      gridLines += `<line class="gridline" x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}"/>`;
+      gridLines += `<text class="axislabel" x="${padL-6}" y="${(y+3).toFixed(1)}" text-anchor="end">${Math.round(val)}</text>`;
+    }
+
+    const labelStep = Math.max(1, Math.ceil(n / 8));
+    let xLabels = '';
+    sorted.forEach((h, i) => {
+      if (i % labelStep === 0 || i === n - 1){
+        xLabels += `<text class="axislabel" x="${xFor(i).toFixed(1)}" y="${H-8}" text-anchor="middle">${shortDate(h.date)}</text>`;
+      }
+    });
+
+    const dots = points.map((p, i) => `<circle class="totaldot" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.5"><title>${sorted[i].date}: ${sorted[i].total} active</title></circle>`).join('');
+
+    return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+      ${gridLines}
+      <path class="totalarea" d="${areaPath}"/>
+      <path class="totalline" d="${linePath}"/>
+      ${dots}
+      ${xLabels}
+    </svg>`;
+  }
+
+  function buildBarChart(sorted){
+    const W = 760, H = 160, padL = 34, padR = 14, padT = 10, padB = 26;
+    const n = sorted.length;
+    const maxVal = Math.max(...sorted.map(h => Math.max(h.added, h.removed)), 1);
+    const midY = padT + (H - padT - padB) / 2;
+    const halfH = (H - padT - padB) / 2;
+    const slot = (W - padL - padR) / n;
+    const barW = Math.max(2, Math.min(18, slot * 0.55));
+
+    let bars = '';
+    sorted.forEach((h, i) => {
+      const cx = padL + slot * i + slot / 2;
+      const addH = (h.added / maxVal) * halfH;
+      const remH = (h.removed / maxVal) * halfH;
+      if (h.added > 0){
+        bars += `<rect class="bar-new" x="${(cx - barW/2).toFixed(1)}" y="${(midY - addH).toFixed(1)}" width="${barW.toFixed(1)}" height="${addH.toFixed(1)}"><title>${h.date}: +${h.added} new</title></rect>`;
+      }
+      if (h.removed > 0){
+        bars += `<rect class="bar-gone" x="${(cx - barW/2).toFixed(1)}" y="${midY.toFixed(1)}" width="${barW.toFixed(1)}" height="${remH.toFixed(1)}"><title>${h.date}: -${h.removed} gone</title></rect>`;
+      }
+    });
+
+    const labelStep = Math.max(1, Math.ceil(n / 8));
+    let xLabels = '';
+    sorted.forEach((h, i) => {
+      if (i % labelStep === 0 || i === n - 1){
+        xLabels += `<text class="axislabel" x="${(padL + slot * i + slot / 2).toFixed(1)}" y="${H-8}" text-anchor="middle">${shortDate(h.date)}</text>`;
+      }
+    });
+
+    return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+      <line class="zeroline" x1="${padL}" y1="${midY.toFixed(1)}" x2="${W-padR}" y2="${midY.toFixed(1)}"/>
+      ${bars}
+      ${xLabels}
+    </svg>`;
+  }
+
+  function renderTrends(){
+    const sorted = Object.keys(historyMap).sort().map(k => historyMap[k]);
+    trendsCount.textContent = sorted.length ? `(${sorted.length})` : '';
+    if (!sorted.length){
+      trendsWrap.innerHTML = `<div class="panel">
+        <div class="panel-title">Listings Over Time</div>
+        <div class="empty">No history yet. Process a dispatch on the SITREP tab to start logging daily counts.</div>
+      </div>`;
+      return;
+    }
+
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const netSinceStart = last.total - first.total;
+    const totalAdded = sorted.reduce((s, h) => s + h.added, 0);
+    const totalRemoved = sorted.reduce((s, h) => s + h.removed, 0);
+    const netClass = netSinceStart > 0 ? 'up' : (netSinceStart < 0 ? 'down' : '');
+    const netSign = netSinceStart > 0 ? '+' : '';
+
+    trendsWrap.innerHTML = `
+      <div class="stat-row">
+        <div class="stat-cell"><div class="stat-label">Active Now</div><div class="stat-value">${last.total}</div></div>
+        <div class="stat-cell"><div class="stat-label">Net Since ${shortDate(first.date)}</div><div class="stat-value ${netClass}">${netSign}${netSinceStart}</div></div>
+        <div class="stat-cell"><div class="stat-label">Total New Logged</div><div class="stat-value up">+${totalAdded}</div></div>
+        <div class="stat-cell"><div class="stat-label">Total Delisted</div><div class="stat-value down">-${totalRemoved}</div></div>
+        <div class="stat-cell"><div class="stat-label">Days Tracked</div><div class="stat-value">${sorted.length}</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Active Listings Over Time</div>
+        ${buildLineChart(sorted)}
+      </div>
+      <div class="panel">
+        <div class="panel-title">Daily New / Delisted</div>
+        ${buildBarChart(sorted)}
+        <div class="chart-legend">
+          <span><span class="legend-swatch" style="background:var(--new);"></span>New listings</span>
+          <span><span class="legend-swatch" style="background:var(--gone);"></span>Delisted</span>
+        </div>
+      </div>
+    `;
+  }
+
+  // ---------- Photo storage ----------
+  async function loadPhotos(){
+    try{
+      const res = await window.storage.get(PHOTO_KEY, false);
+      if (res && res.value) return JSON.parse(res.value);
+      return {};
+    } catch(e){
+      return {};
+    }
+  }
+
+  async function savePhotosToStore(map){
+    try{
+      const json = JSON.stringify(map);
+      if (json.length > 4_500_000){
+        photoStatusMsg.textContent = 'Photo storage is near capacity — some photos may not save. Consider this a rolling cache of recent listings.';
+      }
+      await window.storage.set(PHOTO_KEY, json, false);
+      return true;
+    } catch(e){
+      photoStatusMsg.textContent = 'Storage error — photos not saved. Try again with fewer listings.';
+      return false;
+    }
+  }
+
+  // ---------- Docx photo import ----------
+  let jsZipLoadPromise = null;
+  function ensureJSZip(){
+    if (window.JSZip) return Promise.resolve();
+    if (jsZipLoadPromise) return jsZipLoadPromise;
+    jsZipLoadPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Failed to load JSZip'));
+      document.head.appendChild(script);
+    });
+    return jsZipLoadPromise;
+  }
+
+  function mimeForPath(path){
+    const ext = (path.split('.').pop() || '').toLowerCase();
+    if (ext === 'png') return 'image/png';
+    if (ext === 'gif') return 'image/gif';
+    if (ext === 'bmp') return 'image/bmp';
+    return 'image/jpeg';
+  }
+
+  async function extractPhotosFromDocx(file){
+    await ensureJSZip();
+    const buf = await file.arrayBuffer();
+    const zip = await window.JSZip.loadAsync(buf);
+
+    const docXmlFile = zip.file('word/document.xml');
+    const relsFile = zip.file('word/_rels/document.xml.rels');
+    if (!docXmlFile || !relsFile){
+      throw new Error('This does not look like a valid .docx file.');
+    }
+    const doc = await docXmlFile.async('string');
+    const relsXml = await relsFile.async('string');
+
+    const relMap = {};
+    const relRegex = /Id="(rId\d+)"[^>]*Target="([^"]+)"/g;
+    let rm;
+    while ((rm = relRegex.exec(relsXml)) !== null){
+      relMap[rm[1]] = rm[2];
+    }
+
+    const listingMatches = [];
+    const listingRegex = /<w:t>Listing\s*ID:\s*(\d+)<\/w:t>/g;
+    let lm;
+    while ((lm = listingRegex.exec(doc)) !== null){
+      listingMatches.push({index: lm.index, id: lm[1]});
+    }
+
+    const embedMatches = [];
+    const embedRegex = /<a:blip r:embed="(rId\d+)"/g;
+    let em;
+    while ((em = embedRegex.exec(doc)) !== null){
+      embedMatches.push({index: em.index, rid: em[1]});
+    }
+
+    if (!listingMatches.length){
+      throw new Error('No Listing ID entries found in that document.');
+    }
+
+    const found = {};
+    let matched = 0, noPhoto = 0;
+    for (let i = 0; i < listingMatches.length; i++){
+      const start = listingMatches[i].index;
+      const end = (i + 1 < listingMatches.length) ? listingMatches[i+1].index : doc.length;
+      const embed = embedMatches.find(e => e.index > start && e.index < end);
+      if (!embed){ noPhoto++; continue; }
+      const target = relMap[embed.rid];
+      if (!target) continue;
+      const mediaPath = 'word/' + target.replace(/^\.?\/*/, '');
+      const imgFile = zip.file(mediaPath);
+      if (!imgFile) continue;
+      const base64 = await imgFile.async('base64');
+      const mime = mimeForPath(mediaPath);
+      found[listingMatches[i].id] = `data:${mime};base64,${base64}`;
+      matched++;
+    }
+    return {found, matched, noPhoto, total: listingMatches.length};
+  }
+
+  photoDocxInput.addEventListener('change', async () => {
+    const file = photoDocxInput.files[0];
+    if (!file) return;
+    photoStatusMsg.textContent = 'Reading document...';
+    try{
+      const {found, matched, noPhoto, total} = await extractPhotosFromDocx(file);
+      photoMap = {...photoMap, ...found};
+      const ok = await savePhotosToStore(photoMap);
+      if (ok){
+        photoStatusMsg.textContent = `${matched} of ${total} listings matched to a photo.${noPhoto ? ` ${noPhoto} had none in the document.` : ''}`;
+      }
+      if (lastDiff){
+        renderResults(lastDiff, lastCurrList, true);
+      } else if (lastCurrList){
+        resultsWrap.innerHTML = renderWatchlistPanel(lastCurrList);
+      }
+      renderDossiers();
+    } catch(err){
+      photoStatusMsg.textContent = `Could not read that file: ${err.message}`;
+    }
+    photoDocxInput.value = '';
+  });
+
+  // ---------- Priority homes (To View list) ----------
+  const SEED_PRIORITY_HOMES = [
+    {address:'Oude Lindestraat 23 6411 EH Heerlen', price:2900, source:'Homes.mil', note:'', link:'', listingId:'1103488', status:'to-view'},
+    {address:'Geerstraat 10, 6447 CB Merkelbeek', price:2000, source:'Homes.mil', note:'', link:'', listingId:'876578', status:'removed'},
+    {address:'Huis Oude Akerstraat, Bemelen', price:1995, source:'Pararius', note:'', link:'https://www.pararius.nl/huis-te-huur/bemelen/2d77c4b3/oude-akerstraat', listingId:'', status:'to-view'},
+    {address:'Beek', price:2900, source:'Int. Housing Office', note:'Posted ~20 weeks ago', link:'', listingId:'', status:'to-view'},
+    {address:'President Rooseveltlaan 235, Maastricht', price:3195, source:'Funda', note:'', link:'', listingId:'', status:'to-view'},
+    {address:'Landgraaf', price:1795, source:'Int. Housing Office', note:'Recent posting', link:'', listingId:'', status:'to-view'},
+    {address:'Heerlerweg 61, 6433 HN Hoensbroek', price:null, source:'Homes.mil', note:'', link:'', listingId:'1041253', status:'to-view'},
+    {address:'Guttecoven', price:1550, source:'Int. Housing Office', note:'Recent posting', link:'', listingId:'', status:'to-view'},
+    {address:'Terwaerderveldje 22, 6374 GC Landgraaf', price:null, source:'Homes.mil', note:'', link:'', listingId:'1046743', status:'to-view'},
+    {address:'Mgr Claessenstraat 23, 6131 AH Sittard', price:null, source:'Homes.mil', note:'', link:'', listingId:'869068', status:'to-view'},
+    {address:'Hereweg 91A, 6373 VE Landgraaf', price:null, source:'', note:'', link:'', listingId:'1024682', status:'to-view'},
+    {address:'Hoensbroek', price:2500, source:'Int. Housing Office', note:'', link:'', listingId:'', status:'to-view'}
+  ];
+
+  function makeId(){
+    return 'pv' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  async function loadPriorityHomes(){
+    try{
+      const res = await window.storage.get(PRIORITY_KEY, false);
+      if (res && res.value) return JSON.parse(res.value);
+      return null;
+    } catch(e){
+      return null;
+    }
+  }
+
+  async function savePriorityHomes(){
+    try{
+      await window.storage.set(PRIORITY_KEY, JSON.stringify(priorityHomes), false);
+    } catch(e){
+      pvStatusMsg.textContent = 'Storage error — list not saved.';
+    }
+  }
+
+  const STATUS_CYCLE = ['to-view', 'scheduled', 'viewed', 'removed'];
+  const STATUS_LABEL = {'to-view':'To View', 'scheduled':'Scheduled', 'viewed':'Viewed', 'removed':'Removed'};
+
+  function priorityRowHTML(entry, index){
+    const rec = entry.listingId ? dossierMap[entry.listingId] : null;
+    const displayPrice = entry.price ? entry.price : (rec && rec.rentNum ? rec.rentNum : null);
+    const priceHTML = displayPrice ? `€${Number(displayPrice).toLocaleString()}` : '—';
+    const metaParts = [entry.source, priceHTML].filter(Boolean);
+    if (entry.note) metaParts.push(entry.note);
+    if (entry.listingId) metaParts.push(`ID ${escapeHTML(entry.listingId)}`);
+    const linkHTML = entry.link ? `<a href="${escapeHTML(entry.link)}" target="_blank" rel="noopener">Open listing ↗</a>` : '';
+    const photoHTML = entry.listingId ? photoCellHTML(entry.listingId) : '';
+    return `<div class="pv-row ${entry.status === 'removed' ? 'removed' : ''}" data-pv-id="${escapeHTML(entry.id)}">
+      <div class="pv-order">${index + 1}</div>
+      ${photoHTML ? `<div>${photoHTML}</div>` : ''}
+      <div class="pv-body">
+        <div class="pv-addr">${escapeHTML(entry.address)}</div>
+        <div class="pv-meta">${metaParts.map(escapeHTML).join(' · ')}${linkHTML ? ' · ' + linkHTML : ''}</div>
+      </div>
+      <div class="pv-controls">
+        <button class="pv-status-btn st-${entry.status}" data-pv-action="cycle-status" title="Click to change status">${STATUS_LABEL[entry.status]}</button>
+        <button data-pv-action="move-up" title="Move up">▲</button>
+        <button data-pv-action="move-down" title="Move down">▼</button>
+        <button class="pv-del" data-pv-action="delete" title="Remove from list">✕</button>
+      </div>
+    </div>`;
+  }
+
+  function renderPriorityHomes(){
+    toViewCount.textContent = priorityHomes.length ? `(${priorityHomes.length})` : '';
+    if (!priorityHomes.length){
+      priorityHomesWrap.innerHTML = `<div class="panel"><div class="empty">No homes on the list yet. Add one above.</div></div>`;
+      return;
+    }
+    priorityHomesWrap.innerHTML = `<div class="panel">
+      <div class="panel-title">Homes to View (${priorityHomes.length})</div>
+      ${priorityHomes.map((entry, i) => priorityRowHTML(entry, i)).join('')}
+    </div>`;
+  }
+
+  priorityHomesWrap.addEventListener('click', async (e) => {
+    if (e.target.closest('.photo-thumb')) return; // handled by board-level lightbox
+    const btn = e.target.closest('[data-pv-action]');
+    if (!btn) return;
+    const row = e.target.closest('[data-pv-id]');
+    const id = row.dataset.pvId;
+    const idx = priorityHomes.findIndex(p => p.id === id);
+    if (idx < 0) return;
+    const action = btn.dataset.pvAction;
+    if (action === 'cycle-status'){
+      const entry = priorityHomes[idx];
+      const cur = STATUS_CYCLE.indexOf(entry.status);
+      entry.status = STATUS_CYCLE[(cur + 1) % STATUS_CYCLE.length];
+    } else if (action === 'move-up' && idx > 0){
+      [priorityHomes[idx-1], priorityHomes[idx]] = [priorityHomes[idx], priorityHomes[idx-1]];
+    } else if (action === 'move-down' && idx < priorityHomes.length - 1){
+      [priorityHomes[idx+1], priorityHomes[idx]] = [priorityHomes[idx], priorityHomes[idx+1]];
+    } else if (action === 'delete'){
+      priorityHomes.splice(idx, 1);
+    } else {
+      return;
+    }
+    await savePriorityHomes();
+    renderPriorityHomes();
+  });
+
+  pvAddBtn.addEventListener('click', async () => {
+    const address = pvAddress.value.trim();
+    if (!address){
+      pvStatusMsg.textContent = 'Enter an address or name first.';
+      return;
+    }
+    const priceVal = pvPrice.value.trim().replace(/[^\d]/g, '');
+    priorityHomes.push({
+      id: makeId(),
+      address,
+      price: priceVal ? parseInt(priceVal, 10) : null,
+      source: pvSource.value.trim(),
+      note: pvNote.value.trim(),
+      link: pvLink.value.trim(),
+      listingId: pvListingId.value.trim(),
+      status: 'to-view'
+    });
+    await savePriorityHomes();
+    renderPriorityHomes();
+    pvAddress.value = ''; pvPrice.value = ''; pvSource.value = ''; pvNote.value = ''; pvLink.value = ''; pvListingId.value = '';
+    pvStatusMsg.textContent = 'Added.';
+  });
+
+  // ---------- Criteria (family priorities) ----------
+  const SEED_CRITERIA = {
+    anne: ['Light', 'Storage space', 'Room for sewing', 'Walking distance to stores', 'Full size oven', 'Functional, but small outdoor area'],
+    nick: ['2 bathrooms with showers', 'Large kitchen and pantry', 'Lots of storage and built-ins'],
+    alma: ['2 bathrooms with showers', 'Light', 'Outdoor space'],
+    multiple: ['2 bathrooms with showers', 'Light', 'Outdoor space', 'Lots of storage and built-ins', 'Large kitchen']
+  };
+  const CRITERIA_LABELS = {anne: 'Anne', nick: 'Nick', alma: 'Alma', multiple: 'Multiple Agreement'};
+
+  async function loadCriteria(){
+    try{
+      const res = await window.storage.get(CRITERIA_KEY, false);
+      if (res && res.value) return JSON.parse(res.value);
+      return null;
+    } catch(e){
+      return null;
+    }
+  }
+
+  async function saveCriteria(){
+    try{
+      await window.storage.set(CRITERIA_KEY, JSON.stringify(criteria), false);
+    } catch(e){}
+  }
+
+  function criteriaCardHTML(key){
+    const items = criteria[key] || [];
+    const label = CRITERIA_LABELS[key];
+    const cls = key === 'multiple' ? 'criteria-card multiple' : 'criteria-card';
+    return `<div class="${cls}" data-criteria-key="${key}">
+      <h3>${escapeHTML(label)}</h3>
+      <ul class="criteria-view">${items.map(i => `<li>${escapeHTML(i)}</li>`).join('')}</ul>
+      <textarea class="criteria-edit" style="display:none;">${escapeHTML(items.join('\n'))}</textarea>
+      <button class="criteria-edit-btn" data-criteria-toggle="${key}">Edit</button>
+    </div>`;
+  }
+
+  function renderCriteria(){
+    criteriaWrap.innerHTML = `<div class="panel">
+      <div class="panel-title">Brunssum Housing Features Priorities</div>
+      <div class="criteria-grid">
+        ${['anne','nick','alma','multiple'].map(criteriaCardHTML).join('')}
+      </div>
+    </div>`;
+  }
+
+  criteriaWrap.addEventListener('click', async (e) => {
+    const toggleBtn = e.target.closest('[data-criteria-toggle]');
+    if (!toggleBtn) return;
+    const key = toggleBtn.dataset.criteriaToggle;
+    const card = toggleBtn.closest('.criteria-card');
+    const view = card.querySelector('.criteria-view');
+    const edit = card.querySelector('.criteria-edit');
+    const editing = edit.style.display !== 'none';
+    if (!editing){
+      view.style.display = 'none';
+      edit.style.display = 'block';
+      toggleBtn.textContent = 'Save';
+    } else {
+      const items = edit.value.split('\n').map(s => s.trim()).filter(Boolean);
+      criteria[key] = items;
+      await saveCriteria();
+      renderCriteria();
+    }
+  });
+
+  async function init(){
+    watchMap = await loadWatch();
+    dossierMap = await loadDossiers();
+    historyMap = await loadHistory();
+    photoMap = await loadPhotos();
+    const prev = await loadSnapshot();
+    lastCurrList = prev ? prev.listings : null;
+    if (prev && prev.listings){
+      baselineInfo.textContent = `Baseline on file from ${fmtDate(prev.savedAt)} — ${prev.listings.length} listings. Paste today's dump to diff against it.`;
+      tallyStamps.innerHTML = `<div class="stamp"><b>${prev.listings.length}</b> TOTAL ACTIVE (last check)</div>`;
+    }
+    if (Object.keys(watchMap).length){
+      resultsWrap.innerHTML = renderWatchlistPanel(lastCurrList);
+    }
+    renderDossiers();
+    renderTrends();
+
+    priorityHomes = await loadPriorityHomes();
+    if (priorityHomes === null){
+      priorityHomes = SEED_PRIORITY_HOMES.map(h => ({...h, id: makeId()}));
+      await savePriorityHomes();
+    }
+    renderPriorityHomes();
+
+    criteria = await loadCriteria();
+    if (criteria === null){
+      criteria = JSON.parse(JSON.stringify(SEED_CRITERIA));
+      await saveCriteria();
+    }
+    renderCriteria();
+  }
+
+  processBtn.addEventListener('click', async () => {
+    const raw = pasteArea.value;
+    if (!raw.trim()){
+      setStatus('Paste the dispatch text first.');
+      return;
+    }
+    setStatus('Parsing dispatch...');
+    const currList = parseListings(raw);
+    if (!currList.length){
+      setStatus('No listings recognized in that paste. Check the format and try again.');
+      return;
+    }
+    const prev = await loadSnapshot();
+    const prevList = prev ? prev.listings : null;
+    const diff = diffSnapshots(prevList, currList);
+    lastCurrList = currList;
+    lastDiff = diff;
+    renderResults(diff, currList, !!prev, prev ? prev.savedAt : null);
+    const saved = await saveSnapshot(currList);
+    await recordHistory(saved, diff, currList.length);
+    baselineInfo.textContent = `Baseline on file from ${fmtDate(saved.savedAt)} — ${currList.length} listings.`;
+    setStatus(`Dispatch processed at ${fmtDate(saved.savedAt)}.`);
+  });
+
+  clearBtn.addEventListener('click', async () => {
+    try{
+      await window.storage.delete(STORE_KEY, false);
+    } catch(e){}
+    lastCurrList = null;
+    lastDiff = null;
+    baselineInfo.textContent = "No baseline on file. Paste today's Homes.mil export below to establish one.";
+    tallyStamps.innerHTML = '';
+    resultsWrap.innerHTML = Object.keys(watchMap).length ? renderWatchlistPanel(null) : '';
+    setStatus('Baseline cleared.');
+  });
+
+  init();
+})();
+</script>
+
+</body>
+</html>
