@@ -1,10 +1,21 @@
 const { Redis } = require('@upstash/redis');
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN,
-  automaticDeserialization: false
-});
+// Vercel's Upstash Marketplace integration has used a couple of different
+// env var naming conventions over time. Accept whichever pair actually
+// shows up in this project's environment variables.
+const REDIS_URL =
+  process.env.UPSTASH_REDIS_REST_URL ||
+  process.env.KV_REST_API_URL ||
+  process.env.REDIS_REST_URL;
+
+const REDIS_TOKEN =
+  process.env.UPSTASH_REDIS_REST_TOKEN ||
+  process.env.KV_REST_API_TOKEN ||
+  process.env.REDIS_REST_TOKEN;
+
+const redis = (REDIS_URL && REDIS_TOKEN)
+  ? new Redis({ url: REDIS_URL, token: REDIS_TOKEN, automaticDeserialization: false })
+  : null;
 
 function isAuthed(req) {
   const cookieHeader = req.headers.cookie || '';
@@ -16,6 +27,13 @@ function isAuthed(req) {
 module.exports = async (req, res) => {
   if (!isAuthed(req)) {
     res.status(401).json({ error: 'unauthorized' });
+    return;
+  }
+
+  if (!redis) {
+    res.status(500).json({
+      error: 'Redis is not configured. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN (or the KV_REST_API_* equivalents) in Vercel Settings > Environment Variables, then redeploy.'
+    });
     return;
   }
 
