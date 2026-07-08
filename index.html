@@ -25,13 +25,13 @@
     --changed-dim:#332a13;
   }
   *{box-sizing:border-box;}
-  body{margin:0;}
+  html, body{margin:0; padding:0; min-height:100%; background:#0c0f0a;}
   .board{
     background:var(--bg);
     color:var(--ink);
     font-family:'JetBrains Mono',monospace;
     padding:0;
-    min-height:100%;
+    min-height:100vh;
     background-image:
       radial-gradient(circle at 20% 0%, rgba(255,176,0,0.04), transparent 40%),
       repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
@@ -182,6 +182,7 @@
 
   table{
     width:100%;
+    min-width:640px;
     border-collapse:collapse;
     font-size:12px;
   }
@@ -308,6 +309,7 @@
 
   .tabnav{
     display:flex;
+    flex-wrap:wrap;
     gap:2px;
     margin-top:18px;
   }
@@ -323,6 +325,7 @@
     border-bottom:none;
     padding:9px 20px;
     cursor:pointer;
+    white-space:nowrap;
   }
   .tab-btn:hover{color:var(--ink);}
   .tab-btn.active{
@@ -491,6 +494,17 @@
     flex-wrap:wrap;
   }
   .pv-meta a{color:var(--olive);}
+  .pv-notes-view{
+    font-size:11.5px;
+    color:var(--ink);
+    margin-top:5px;
+    padding-top:5px;
+    border-top:1px dashed var(--border);
+  }
+  .pv-notes-input{
+    min-height:56px;
+    margin-top:4px;
+  }
   .pv-controls{display:flex;align-items:center;gap:6px;flex-shrink:0;}
   .pv-controls button{
     background:transparent;
@@ -560,6 +574,22 @@
     margin-top:10px;
   }
   .criteria-edit-btn:hover{color:var(--ink);border-color:var(--olive);}
+
+  @media (max-width: 640px){
+    .masthead{padding:16px 14px 12px;}
+    h1{font-size:32px;}
+    .eyebrow{font-size:10px;}
+    .body-grid{padding:14px 14px 60px;}
+    .panel{padding:14px 14px;}
+    .tab-btn{padding:8px 12px;font-size:12px;}
+    .row{gap:8px;}
+    .row input[type="text"], .row button{width:100%;}
+    .dossier-head-row{flex-wrap:wrap;}
+    .photo-thumb-lg, .photo-placeholder-lg{width:120px;height:90px;}
+    .stat-row{grid-template-columns:repeat(2, 1fr);}
+    .pv-row{flex-wrap:wrap;}
+    .pv-controls{width:100%;justify-content:flex-start;margin-top:8px;}
+  }
 </style>
 </head>
 <body>
@@ -1004,12 +1034,14 @@
   }
 
   function tableShell(rowsHTML){
-    return `<table>
+    return `<div style="overflow-x:auto;">
+    <table>
       <thead><tr>
         <th></th><th></th><th></th><th>Location</th><th>Type</th><th>Config</th><th>Rent</th><th>Available</th><th>Inspection</th><th>ID</th><th>Delta</th>
       </tr></thead>
       <tbody>${rowsHTML}</tbody>
-    </table>`;
+    </table>
+    </div>`;
   }
 
 
@@ -1814,15 +1846,33 @@
     if (entry.listingId) metaParts.push(`ID ${escapeHTML(entry.listingId)}`);
     const linkHTML = entry.link ? `<a href="${escapeHTML(entry.link)}" target="_blank" rel="noopener">Open listing ↗</a>` : '';
     const photoHTML = entry.listingId ? photoCellHTML(entry.listingId) : '';
+    const notesHTML = entry.notes ? `<div class="pv-notes-view">📝 ${escapeHTML(entry.notes)}</div>` : '';
     return `<div class="pv-row ${entry.status === 'removed' ? 'removed' : ''}" data-pv-id="${escapeHTML(entry.id)}">
       <div class="pv-order">${index + 1}</div>
       ${photoHTML ? `<div>${photoHTML}</div>` : ''}
       <div class="pv-body">
-        <div class="pv-addr">${escapeHTML(entry.address)}</div>
-        <div class="pv-meta">${metaParts.map(escapeHTML).join(' · ')}${linkHTML ? ' · ' + linkHTML : ''}</div>
+        <div class="pv-view">
+          <div class="pv-addr">${escapeHTML(entry.address)}</div>
+          <div class="pv-meta">${metaParts.map(escapeHTML).join(' · ')}${linkHTML ? ' · ' + linkHTML : ''}</div>
+          ${notesHTML}
+        </div>
+        <div class="pv-edit" style="display:none;">
+          <div class="row" style="flex-wrap:wrap;margin-top:0;">
+            <input type="text" class="pv-e-address" value="${escapeHTML(entry.address)}" placeholder="Address" style="flex:2;min-width:160px;">
+            <input type="text" class="pv-e-price" value="${entry.price || ''}" placeholder="Rent €" style="flex:1;min-width:80px;">
+            <input type="text" class="pv-e-source" value="${escapeHTML(entry.source || '')}" placeholder="Source" style="flex:1;min-width:120px;">
+          </div>
+          <div class="row" style="flex-wrap:wrap;">
+            <input type="text" class="pv-e-note" value="${escapeHTML(entry.note || '')}" placeholder="Note" style="flex:2;min-width:160px;">
+            <input type="text" class="pv-e-link" value="${escapeHTML(entry.link || '')}" placeholder="Link URL" style="flex:2;min-width:160px;">
+            <input type="text" class="pv-e-listingid" value="${escapeHTML(entry.listingId || '')}" placeholder="Listing ID" style="flex:1;min-width:100px;">
+          </div>
+          <textarea class="pv-e-notes pv-notes-input" placeholder="Viewing notes...">${escapeHTML(entry.notes || '')}</textarea>
+        </div>
       </div>
       <div class="pv-controls">
         <button class="pv-status-btn st-${entry.status}" data-pv-action="cycle-status" title="Click to change status">${STATUS_LABEL[entry.status]}</button>
+        <button data-pv-action="toggle-edit" title="Edit this entry">Edit</button>
         <button data-pv-action="move-up" title="Move up">▲</button>
         <button data-pv-action="move-down" title="Move down">▼</button>
         <button class="pv-del" data-pv-action="delete" title="Remove from list">✕</button>
@@ -1851,6 +1901,31 @@
     const idx = priorityHomes.findIndex(p => p.id === id);
     if (idx < 0) return;
     const action = btn.dataset.pvAction;
+
+    if (action === 'toggle-edit'){
+      const viewEl = row.querySelector('.pv-view');
+      const editEl = row.querySelector('.pv-edit');
+      const editing = editEl.style.display !== 'none';
+      if (!editing){
+        viewEl.style.display = 'none';
+        editEl.style.display = 'block';
+        btn.textContent = 'Save';
+      } else {
+        const entry = priorityHomes[idx];
+        entry.address = row.querySelector('.pv-e-address').value.trim() || entry.address;
+        const priceRaw = row.querySelector('.pv-e-price').value.trim().replace(/[^\d]/g, '');
+        entry.price = priceRaw ? parseInt(priceRaw, 10) : null;
+        entry.source = row.querySelector('.pv-e-source').value.trim();
+        entry.note = row.querySelector('.pv-e-note').value.trim();
+        entry.link = row.querySelector('.pv-e-link').value.trim();
+        entry.listingId = row.querySelector('.pv-e-listingid').value.trim();
+        entry.notes = row.querySelector('.pv-e-notes').value.trim();
+        await savePriorityHomes();
+        renderPriorityHomes();
+      }
+      return;
+    }
+
     if (action === 'cycle-status'){
       const entry = priorityHomes[idx];
       const cur = STATUS_CYCLE.indexOf(entry.status);
