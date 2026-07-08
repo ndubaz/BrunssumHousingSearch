@@ -747,6 +747,10 @@
     <button id="authSubmitBtn" style="width:100%;">Enter</button>
   </div>
 </div>
+<div id="syncBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:10000; background:#3a0f0a; color:#ffb0a0; border-bottom:2px solid #d9503f; padding:10px 16px; font-family:'JetBrains Mono',monospace; font-size:12.5px; text-align:center;">
+  <span id="syncBannerText"></span>
+  <button id="syncBannerClose" style="margin-left:14px; background:transparent; border:1px solid #d9503f; color:#ffb0a0; font-family:'JetBrains Mono',monospace; font-size:11px; padding:2px 8px; cursor:pointer;">Dismiss</button>
+</div>
 
 <script>
 (function(){
@@ -801,12 +805,36 @@
     document.getElementById('authPasswordInput').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') submitAuth();
     });
+    const closeBtn = document.getElementById('syncBannerClose');
+    if (closeBtn){
+      closeBtn.addEventListener('click', () => {
+        document.getElementById('syncBanner').style.display = 'none';
+      });
+    }
   });
+
+  function showSyncError(message){
+    const banner = document.getElementById('syncBanner');
+    const text = document.getElementById('syncBannerText');
+    if (!banner || !text) return;
+    text.textContent = message;
+    banner.style.display = 'block';
+  }
+  function clearSyncError(){
+    const banner = document.getElementById('syncBanner');
+    if (banner) banner.style.display = 'none';
+  }
 
   async function apiFetch(url, opts){
     opts = opts || {};
     opts.credentials = 'include';
-    let res = await fetch(url, opts);
+    let res;
+    try{
+      res = await fetch(url, opts);
+    } catch(networkErr){
+      showSyncError('Cannot reach the server. Check your connection and reload.');
+      throw networkErr;
+    }
     if (res.status === 401){
       await promptLogin();
       res = await fetch(url, opts);
@@ -814,11 +842,24 @@
     return res;
   }
 
+  async function describeError(res){
+    let detail = '';
+    try{
+      const data = await res.clone().json();
+      if (data && data.error) detail = data.error;
+    } catch(e){}
+    return `Save failed (HTTP ${res.status})${detail ? ': ' + detail : ''}. Your last change may not have been stored — check Vercel function logs.`;
+  }
+
   window.storage = {
     async get(key){
       const res = await apiFetch('/api/storage?key=' + encodeURIComponent(key));
       if (res.status === 404) throw new Error('not found');
-      if (!res.ok) throw new Error('storage get failed');
+      if (!res.ok){
+        showSyncError(await describeError(res));
+        throw new Error('storage get failed: HTTP ' + res.status);
+      }
+      clearSyncError();
       const data = await res.json();
       return {key: data.key, value: data.value, shared: true};
     },
@@ -828,19 +869,31 @@
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({key, value})
       });
-      if (!res.ok) return null;
+      if (!res.ok){
+        showSyncError(await describeError(res));
+        return null;
+      }
+      clearSyncError();
       const data = await res.json();
       return {key: data.key, value: data.value, shared: true};
     },
     async delete(key){
       const res = await apiFetch('/api/storage?key=' + encodeURIComponent(key), {method: 'DELETE'});
-      if (!res.ok) return null;
+      if (!res.ok){
+        showSyncError(await describeError(res));
+        return null;
+      }
+      clearSyncError();
       const data = await res.json();
       return {key: data.key, deleted: true, shared: true};
     },
     async list(prefix){
       const res = await apiFetch('/api/storage?list=1&prefix=' + encodeURIComponent(prefix || ''));
-      if (!res.ok) return null;
+      if (!res.ok){
+        showSyncError(await describeError(res));
+        return null;
+      }
+      clearSyncError();
       const data = await res.json();
       return {keys: data.keys, prefix: prefix, shared: true};
     }
