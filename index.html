@@ -83,6 +83,19 @@
     background:var(--panel);
   }
   .stamp b{color:var(--ink);font-weight:700;}
+
+  .utilbar{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:10px;
+  }
+  .stamp-btn{
+    font-family:'JetBrains Mono',monospace;
+    cursor:pointer;
+  }
+  .stamp-btn:hover{color:var(--ink);border-color:var(--amber-dim);}
+  .over-budget{color:var(--gone)!important;font-weight:700;}
   .stamp.n{border-color:var(--new);color:var(--new);}
   .stamp.c{border-color:var(--changed);color:var(--changed);}
   .stamp.g{border-color:var(--gone);color:var(--gone);}
@@ -584,6 +597,27 @@
     .pv-row{flex-wrap:wrap;}
     .pv-controls{width:100%;justify-content:flex-start;margin-top:8px;}
   }
+
+  @media print{
+    html, body, .board{background:#fff!important;background-image:none!important;}
+    .tabnav, .utilbar, .row, button, textarea, input, select,
+    .criteria-edit-btn, .watch-btn, .pv-controls, .roster-toggle,
+    #authOverlay, #budgetOverlay, .lightbox-overlay{display:none!important;}
+    * {color:#111!important; text-shadow:none!important; box-shadow:none!important;}
+    .board{background-image:none!important;}
+    .masthead{border-bottom:2px solid #111;}
+    .masthead::before{display:none;}
+    .panel, .dossier-card, .pv-row, .stamp{
+      border:1px solid #999!important;
+      background:#fff!important;
+      break-inside:avoid;
+      page-break-inside:avoid;
+    }
+    .panel-title::after{background:#999!important;}
+    a{color:#111!important;text-decoration:underline;}
+    #rosterTable{display:block!important;}
+    .over-budget{color:#111!important;font-weight:700;text-decoration:underline;}
+  }
 </style>
 
 <div class="board" id="board">
@@ -598,6 +632,24 @@
       <button class="tab-btn" id="tabTrendsBtn" data-tab="trends">Trends <span id="trendsCount"></span></button>
       <button class="tab-btn" id="tabToViewBtn" data-tab="toview">To View <span id="toViewCount"></span></button>
       <button class="tab-btn" id="tabCriteriaBtn" data-tab="criteria">Priorities</button>
+      <button class="tab-btn" id="tabLogBtn" data-tab="log">Log</button>
+    </div>
+    <div class="utilbar">
+      <button class="stamp stamp-btn" id="actorStamp" title="Click to switch who's using this">Signed in as: <b id="actorValue">—</b></button>
+      <button class="stamp stamp-btn" id="ohaStamp" title="Click to set your OHA/BAH allowance">OHA: <b id="ohaValue">Not set</b></button>
+      <button class="stamp stamp-btn" id="printBtn" title="Open a printable / PDF-friendly view">Print / Export</button>
+    </div>
+  </div>
+
+  <div id="budgetOverlay" class="lightbox-overlay" style="display:none;">
+    <div style="background:var(--panel); border:1px solid var(--amber-dim); padding:26px 30px; width:280px; text-align:left;">
+      <div style="font-family:'Big Shoulders Condensed',sans-serif; font-weight:800; letter-spacing:0.08em; color:var(--amber); font-size:18px; text-transform:uppercase; margin-bottom:14px;">Monthly OHA / BAH</div>
+      <input type="text" id="ohaInput" placeholder="e.g. 2400" style="width:100%; background:#080a06; border:1px solid var(--border); color:var(--ink); font-family:'JetBrains Mono',monospace; font-size:12.5px; padding:9px 10px; margin-bottom:10px; box-sizing:border-box;">
+      <div class="status-msg" style="margin-bottom:10px;">Listings above this rent get flagged in red across the tracker.</div>
+      <div class="row" style="margin-top:0;">
+        <button id="ohaSaveBtn" style="flex:1;">Save</button>
+        <button class="ghost" id="ohaCloseBtn" style="flex:1;">Close</button>
+      </div>
     </div>
   </div>
 
@@ -671,6 +723,10 @@
     <div id="criteriaSection" style="display:none;">
       <div id="criteriaWrap"></div>
     </div>
+
+    <div id="logSection" style="display:none;">
+      <div id="logWrap"></div>
+    </div>
   </div>
 </div>
 
@@ -716,9 +772,21 @@
   const pvListingId = document.getElementById('pvListingId');
   const pvAddBtn = document.getElementById('pvAddBtn');
   const pvStatusMsg = document.getElementById('pvStatusMsg');
+  const tabLogBtn = document.getElementById('tabLogBtn');
+  const logSection = document.getElementById('logSection');
+  const logWrap = document.getElementById('logWrap');
+  const actorStamp = document.getElementById('actorStamp');
+  const actorValue = document.getElementById('actorValue');
+  const ohaStamp = document.getElementById('ohaStamp');
+  const ohaValue = document.getElementById('ohaValue');
+  const printBtn = document.getElementById('printBtn');
+  const budgetOverlay = document.getElementById('budgetOverlay');
+  const ohaInput = document.getElementById('ohaInput');
+  const ohaSaveBtn = document.getElementById('ohaSaveBtn');
+  const ohaCloseBtn = document.getElementById('ohaCloseBtn');
 
-  const TAB_SECTIONS = {sitrep: sitrepSection, library: librarySection, trends: trendsSection, toview: toViewSection, criteria: criteriaSection};
-  const TAB_BTNS = {sitrep: tabSitrepBtn, library: tabLibraryBtn, trends: tabTrendsBtn, toview: tabToViewBtn, criteria: tabCriteriaBtn};
+  const TAB_SECTIONS = {sitrep: sitrepSection, library: librarySection, trends: trendsSection, toview: toViewSection, criteria: criteriaSection, log: logSection};
+  const TAB_BTNS = {sitrep: tabSitrepBtn, library: tabLibraryBtn, trends: tabTrendsBtn, toview: tabToViewBtn, criteria: tabCriteriaBtn, log: tabLogBtn};
 
   function setActiveTab(tab){
     Object.keys(TAB_SECTIONS).forEach(key => {
@@ -731,6 +799,7 @@
   tabTrendsBtn.addEventListener('click', () => setActiveTab('trends'));
   tabToViewBtn.addEventListener('click', () => setActiveTab('toview'));
   tabCriteriaBtn.addEventListener('click', () => setActiveTab('criteria'));
+  tabLogBtn.addEventListener('click', () => setActiveTab('log'));
 
 
   const STORE_KEY = 'brunssum-latest-snapshot';
@@ -740,6 +809,9 @@
   const PHOTO_KEY = 'brunssum-photos';
   const PRIORITY_KEY = 'brunssum-priority-homes';
   const CRITERIA_KEY = 'brunssum-criteria';
+  const OHA_KEY = 'brunssum-oha';
+  const ACTIVITY_KEY = 'brunssum-activity-log';
+  const ACTOR_LOCAL_KEY = 'brunssum_actor_name';
 
   let watchMap = {};       // { [listingId]: lastKnownRecord }
   let lastCurrList = null; // most recent full listing set we know about
@@ -748,6 +820,9 @@
   let photoMap = {};       // { [listingId]: dataURI }
   let priorityHomes = null; // ordered array of {id, address, price, source, note, link, listingId, status}
   let criteria = null;      // { anne:[], nick:[], alma:[], multiple:[] }
+  let ohaAllowance = null;  // number or null
+  let activityLog = [];     // array of {actor, action, ts}, newest last
+  const ACTOR_CYCLE = ['Nick', 'Anne', 'Guest'];
 
   function setStatus(msg){ statusMsg.textContent = msg; }
 
@@ -903,7 +978,7 @@
       <td class="addr">${escapeHTML(rec.address || rec.postal || '—')}</td>
       <td>${escapeHTML(rec.type)}</td>
       <td>${escapeHTML(rec.beds)}bd / ${escapeHTML(rec.baths)}ba</td>
-      <td>€${rec.rentNum ? rec.rentNum.toLocaleString() : escapeHTML(rec.rentRaw)}</td>
+      <td class="${isOverBudget(rec.rentNum) ? 'over-budget' : ''}">€${rec.rentNum ? rec.rentNum.toLocaleString() : escapeHTML(rec.rentRaw)}</td>
       <td>${escapeHTML(rec.available)}</td>
       <td>${escapeHTML(rec.inspection)}</td>
       <td class="id">${escapeHTML(rec.id)}</td>
@@ -1089,12 +1164,15 @@
   }
 
   async function toggleWatch(id){
+    let action;
     if (watchMap[id]){
       delete watchMap[id];
+      action = `unstarred ${id}`;
     } else {
       const rec = (lastCurrList || []).find(r => r.id === id) || watchMap[id];
       if (!rec) return;
       watchMap[id] = rec;
+      action = `starred ${rec.address || rec.city || id}`;
     }
     await saveWatch(watchMap);
     if (lastDiff){
@@ -1103,6 +1181,7 @@
       resultsWrap.innerHTML = renderWatchlistPanel(lastCurrList);
     }
     renderDossiers();
+    logActivity(action);
   }
 
   board.addEventListener('click', (e) => {
@@ -1296,7 +1375,7 @@
             <span>ID ${escapeHTML(rec.id)}</span>
           </div>
         </div>
-        <div class="dossier-rent">€${rec.rentNum ? rec.rentNum.toLocaleString() : escapeHTML(rec.rentRaw)}</div>
+        <div class="dossier-rent ${isOverBudget(rec.rentNum) ? 'over-budget' : ''}">€${rec.rentNum ? rec.rentNum.toLocaleString() : escapeHTML(rec.rentRaw)}</div>
         </div>
       </div>
       <div class="dossier-body" id="dossier-body-${escapeHTML(rec.id)}">
@@ -1379,6 +1458,7 @@
     if (skippedUnparsed) parts.push(`${skippedUnparsed} block${skippedUnparsed === 1 ? '' : 's'} unrecognized.`);
     dossierStatusMsg.textContent = parts.join(' ');
     dossierArea.value = '';
+    if (saved.length) logActivity(`saved ${saved.length} dossier${saved.length === 1 ? '' : 's'} to the library`);
   });
 
   // ---------- History storage ----------
@@ -1665,6 +1745,7 @@
       const ok = await savePhotosToStore(photoMap);
       if (ok){
         photoStatusMsg.textContent = `${matched} of ${total} listings matched to a photo.${noPhoto ? ` ${noPhoto} had none in the document.` : ''}`;
+        if (matched) logActivity(`imported ${matched} listing photo${matched === 1 ? '' : 's'}`);
       }
       if (lastDiff){
         renderResults(lastDiff, lastCurrList, true);
@@ -1722,9 +1803,9 @@
   function priorityRowHTML(entry, index){
     const rec = entry.listingId ? dossierMap[entry.listingId] : null;
     const displayPrice = entry.price ? entry.price : (rec && rec.rentNum ? rec.rentNum : null);
-    const priceHTML = displayPrice ? `€${Number(displayPrice).toLocaleString()}` : '—';
-    const metaParts = [entry.source, priceHTML].filter(Boolean);
-    if (entry.note) metaParts.push(entry.note);
+    const priceHTML = displayPrice ? `<span class="${isOverBudget(displayPrice) ? 'over-budget' : ''}">€${Number(displayPrice).toLocaleString()}</span>` : '—';
+    const metaParts = [entry.source ? escapeHTML(entry.source) : '', priceHTML].filter(Boolean);
+    if (entry.note) metaParts.push(escapeHTML(entry.note));
     if (entry.listingId) metaParts.push(`ID ${escapeHTML(entry.listingId)}`);
     const linkHTML = entry.link ? `<a href="${escapeHTML(entry.link)}" target="_blank" rel="noopener">Open listing ↗</a>` : '';
     const photoHTML = entry.listingId ? photoCellHTML(entry.listingId) : '';
@@ -1735,7 +1816,7 @@
       <div class="pv-body">
         <div class="pv-view">
           <div class="pv-addr">${escapeHTML(entry.address)}</div>
-          <div class="pv-meta">${metaParts.map(escapeHTML).join(' · ')}${linkHTML ? ' · ' + linkHTML : ''}</div>
+          <div class="pv-meta">${metaParts.join(' · ')}${linkHTML ? ' · ' + linkHTML : ''}</div>
           ${notesHTML}
         </div>
         <div class="pv-edit" style="display:none;">
@@ -1804,6 +1885,7 @@
         entry.notes = row.querySelector('.pv-e-notes').value.trim();
         await savePriorityHomes();
         renderPriorityHomes();
+        logActivity(`edited "${entry.address}" in To View`);
       }
       return;
     }
@@ -1812,12 +1894,21 @@
       const entry = priorityHomes[idx];
       const cur = STATUS_CYCLE.indexOf(entry.status);
       entry.status = STATUS_CYCLE[(cur + 1) % STATUS_CYCLE.length];
+      await savePriorityHomes();
+      renderPriorityHomes();
+      logActivity(`marked "${entry.address}" as ${STATUS_LABEL[entry.status]}`);
+      return;
     } else if (action === 'move-up' && idx > 0){
       [priorityHomes[idx-1], priorityHomes[idx]] = [priorityHomes[idx], priorityHomes[idx-1]];
     } else if (action === 'move-down' && idx < priorityHomes.length - 1){
       [priorityHomes[idx+1], priorityHomes[idx]] = [priorityHomes[idx], priorityHomes[idx+1]];
     } else if (action === 'delete'){
+      const removedAddr = priorityHomes[idx].address;
       priorityHomes.splice(idx, 1);
+      await savePriorityHomes();
+      renderPriorityHomes();
+      logActivity(`removed "${removedAddr}" from To View`);
+      return;
     } else {
       return;
     }
@@ -1846,6 +1937,7 @@
     renderPriorityHomes();
     pvAddress.value = ''; pvPrice.value = ''; pvSource.value = ''; pvNote.value = ''; pvLink.value = ''; pvListingId.value = '';
     pvStatusMsg.textContent = 'Added.';
+    logActivity(`added "${address}" to To View`);
   });
 
   // ---------- Criteria (family priorities) ----------
@@ -1911,7 +2003,133 @@
       criteria[key] = items;
       await saveCriteria();
       renderCriteria();
+      logActivity(`updated ${CRITERIA_LABELS[key]} priorities`);
     }
+  });
+
+  // ---------- Actor identity (per-device, local only) ----------
+  function getActor(){
+    try{
+      return localStorage.getItem(ACTOR_LOCAL_KEY) || 'Nick';
+    } catch(e){
+      return 'Nick';
+    }
+  }
+  function setActor(name){
+    try{ localStorage.setItem(ACTOR_LOCAL_KEY, name); } catch(e){}
+  }
+  function renderActorStamp(){
+    actorValue.textContent = getActor();
+  }
+  actorStamp.addEventListener('click', () => {
+    const cur = getActor();
+    const idx = ACTOR_CYCLE.indexOf(cur);
+    const next = ACTOR_CYCLE[(idx + 1) % ACTOR_CYCLE.length];
+    setActor(next);
+    renderActorStamp();
+  });
+
+  // ---------- Budget tracker (OHA / BAH) ----------
+  async function loadOha(){
+    try{
+      const res = await window.storage.get(OHA_KEY, false);
+      if (res && res.value) return JSON.parse(res.value);
+      return null;
+    } catch(e){
+      return null;
+    }
+  }
+  async function saveOha(){
+    try{
+      await window.storage.set(OHA_KEY, JSON.stringify(ohaAllowance), false);
+    } catch(e){}
+  }
+  function renderOhaStamp(){
+    ohaValue.textContent = ohaAllowance ? `€${Number(ohaAllowance).toLocaleString()}` : 'Not set';
+  }
+  function isOverBudget(rentNum){
+    return Boolean(ohaAllowance) && Boolean(rentNum) && Number(rentNum) > Number(ohaAllowance);
+  }
+  ohaStamp.addEventListener('click', () => {
+    ohaInput.value = ohaAllowance || '';
+    budgetOverlay.style.display = 'flex';
+    ohaInput.focus();
+  });
+  ohaCloseBtn.addEventListener('click', () => { budgetOverlay.style.display = 'none'; });
+  ohaSaveBtn.addEventListener('click', async () => {
+    const raw = ohaInput.value.trim().replace(/[^\d]/g, '');
+    ohaAllowance = raw ? parseInt(raw, 10) : null;
+    await saveOha();
+    renderOhaStamp();
+    budgetOverlay.style.display = 'none';
+    logActivity(ohaAllowance ? `set OHA/BAH allowance to €${ohaAllowance.toLocaleString()}` : 'cleared the OHA/BAH allowance');
+    if (lastDiff){
+      renderResults(lastDiff, lastCurrList, true);
+    } else if (lastCurrList){
+      resultsWrap.innerHTML = renderWatchlistPanel(lastCurrList);
+    }
+    renderDossiers();
+    renderPriorityHomes();
+  });
+
+  // ---------- Activity log ----------
+  async function loadActivity(){
+    try{
+      const res = await window.storage.get(ACTIVITY_KEY, false);
+      if (res && res.value) return JSON.parse(res.value);
+      return [];
+    } catch(e){
+      return [];
+    }
+  }
+  async function saveActivityToStore(){
+    try{
+      await window.storage.set(ACTIVITY_KEY, JSON.stringify(activityLog), false);
+    } catch(e){}
+  }
+  function relativeTime(iso){
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
+  }
+  async function logActivity(action){
+    activityLog.push({actor: getActor(), action, ts: new Date().toISOString()});
+    if (activityLog.length > 150){
+      activityLog = activityLog.slice(activityLog.length - 150);
+    }
+    await saveActivityToStore();
+    if (logSection.style.display !== 'none'){
+      renderActivityLog();
+    }
+  }
+  function renderActivityLog(){
+    if (!activityLog.length){
+      logWrap.innerHTML = `<div class="panel"><div class="empty">No activity logged yet. Actions you and Anne take — processing dispatches, starring listings, editing lists — show up here.</div></div>`;
+      return;
+    }
+    const rows = activityLog.slice().reverse().map(entry => `
+      <div class="pv-row" style="align-items:baseline;">
+        <div class="pv-body">
+          <span style="color:var(--amber);font-weight:700;">${escapeHTML(entry.actor)}</span>
+          <span style="color:var(--ink);"> ${escapeHTML(entry.action)}</span>
+          <span style="color:var(--ink-dim);font-size:11px;"> · ${relativeTime(entry.ts)}</span>
+        </div>
+      </div>`).join('');
+    logWrap.innerHTML = `<div class="panel">
+      <div class="panel-title">Activity (${activityLog.length})</div>
+      ${rows}
+    </div>`;
+  }
+  tabLogBtn.addEventListener('click', () => renderActivityLog());
+
+  // ---------- Print / export ----------
+  printBtn.addEventListener('click', () => {
+    window.print();
   });
 
   async function init(){
@@ -1944,6 +2162,11 @@
       await saveCriteria();
     }
     renderCriteria();
+
+    renderActorStamp();
+    ohaAllowance = await loadOha();
+    renderOhaStamp();
+    activityLog = await loadActivity();
   }
 
   processBtn.addEventListener('click', async () => {
@@ -1968,6 +2191,7 @@
     await recordHistory(saved, diff, currList.length);
     baselineInfo.textContent = `Baseline on file from ${fmtDate(saved.savedAt)} — ${currList.length} listings.`;
     setStatus(`Dispatch processed at ${fmtDate(saved.savedAt)}.`);
+    logActivity(`processed a dispatch — ${diff.added.length} new, ${diff.changed.length} changed, ${diff.removed.length} gone (${currList.length} total)`);
   });
 
   clearBtn.addEventListener('click', async () => {
