@@ -7,25 +7,27 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Big+Shoulders+Condensed:wght@600;700;800&display=swap">
 <style>
   :root{
-    --bg:#0c0f0a;
-    --panel:#12160f;
-    --panel-raised:#171c13;
-    --border:#2c3324;
-    --border-bright:#4a5636;
-    --ink:#d8dcc8;
-    --ink-dim:#7c8567;
-    --amber:#ffb000;
-    --amber-dim:#8a6108;
-    --olive:#9aa876;
-    --new:#5fbf5f;
-    --new-dim:#1e3319;
-    --gone:#d9503f;
-    --gone-dim:#331c17;
-    --changed:#e8b84b;
-    --changed-dim:#332a13;
+    --bg:#0a1220;
+    --panel:#101c2e;
+    --panel-raised:#16233a;
+    --border:#22314a;
+    --border-bright:#3a5170;
+    --ink:#dce6f0;
+    --ink-dim:#7189a8;
+    --amber:#ff7a1a;
+    --amber-dim:#8a4014;
+    --olive:#5b93c7;
+    --new:#4fbf7a;
+    --new-dim:#12331f;
+    --gone:#e6483f;
+    --gone-dim:#3a1712;
+    --changed:#f0c34a;
+    --changed-dim:#3a2f10;
+    --input-bg:#060c16;
+    --placeholder:#33455e;
   }
   *{box-sizing:border-box;}
-  html, body{margin:0; padding:0; min-height:100%; background:#0c0f0a;}
+  html, body{margin:0; padding:0; min-height:100%; background:#0a1220;}
   .board{
     background:var(--bg);
     color:var(--ink);
@@ -142,7 +144,7 @@
   textarea{
     width:100%;
     min-height:220px;
-    background:#080a06;
+    background:var(--input-bg);
     border:1px solid var(--border);
     color:var(--ink);
     font-family:'JetBrains Mono',monospace;
@@ -152,7 +154,7 @@
     resize:vertical;
   }
   textarea:focus{outline:1.5px solid var(--amber-dim);}
-  textarea::placeholder{color:#3d4432;}
+  textarea::placeholder{color:var(--placeholder);}
 
   .row{
     display:flex;
@@ -232,6 +234,96 @@
   .tag.g{background:var(--gone);color:#1a0b08;}
   .tag.c{background:var(--changed);color:#1a1608;}
   .addr{color:var(--ink);font-weight:500;}
+  .row-map-link{margin-top:2px;}
+
+  .filter-bar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:10px;
+    align-items:center;
+  }
+  .filter-input{
+    background:var(--input-bg);
+    border:1px solid var(--border);
+    color:var(--ink);
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    padding:7px 8px;
+    width:90px;
+  }
+  select.filter-input{width:auto;}
+
+  .compare-bar{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    z-index:500;
+    background:var(--panel);
+    border-top:2px solid var(--amber);
+    padding:12px 20px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:12.5px;
+    color:var(--ink);
+  }
+  .compare-btn{
+    background:transparent;
+    border:1px solid var(--border-bright);
+    color:var(--ink-dim);
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    padding:4px 9px;
+    cursor:pointer;
+  }
+  .compare-btn.active{color:var(--amber);border-color:var(--amber-dim);}
+  #compareTableWrap table{min-width:520px;}
+  #compareTableWrap th, #compareTableWrap td{white-space:normal;}
+
+  .score-badge{
+    display:inline-block;
+    font-family:'Big Shoulders Condensed',sans-serif;
+    font-weight:700;
+    font-size:11px;
+    letter-spacing:0.05em;
+    padding:2px 8px;
+    border:1px solid var(--border-bright);
+    color:var(--ink-dim);
+  }
+  .score-badge.full{color:var(--new);border-color:var(--new);}
+  .score-badge.partial{color:var(--changed);border-color:var(--changed);}
+  .criteria-check-list{
+    margin-top:10px;
+    padding-top:10px;
+    border-top:1px dashed var(--border);
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px 14px;
+  }
+  .criteria-check-item{
+    font-size:11.5px;
+    color:var(--ink-dim);
+    display:flex;
+    align-items:center;
+    gap:5px;
+    cursor:pointer;
+  }
+  .criteria-check-item input{cursor:pointer;}
+  .criteria-check-item.checked{color:var(--ink);}
+
+  .pv-viewing{
+    font-size:11.5px;
+    color:var(--amber);
+    margin-top:5px;
+  }
+  .pv-viewing a{color:var(--olive);margin-left:8px;}
+  .row-map-link a, .dossier-meta a, .pv-meta a{color:var(--olive);text-decoration:none;font-size:11px;}
+  .row-map-link a:hover, .dossier-meta a:hover, .pv-meta a:hover{color:var(--amber);text-decoration:underline;}
   .id{color:var(--ink-dim);}
   .delta{font-size:11px;color:var(--changed);}
   .delta .old{color:var(--ink-dim);text-decoration:line-through;margin-right:5px;}
@@ -350,7 +442,7 @@
 
   #librarySearch{
     width:100%;
-    background:#080a06;
+    background:var(--input-bg);
     border:1px solid var(--border);
     color:var(--ink);
     font-family:'JetBrains Mono',monospace;
@@ -358,7 +450,7 @@
     padding:10px 12px;
   }
   #librarySearch:focus{outline:1.5px solid var(--amber-dim);}
-  #librarySearch::placeholder{color:#3d4432;}
+  #librarySearch::placeholder{color:var(--placeholder);}
 
   .chart-svg{width:100%;height:auto;display:block;}
   .chart-svg .gridline{stroke:var(--border);stroke-width:1;}
@@ -449,6 +541,74 @@
     font-size:12px;
     color:var(--ink-dim);
   }
+  #screenshotInput{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    color:var(--ink-dim);
+  }
+  .review-card{
+    margin-top:16px;
+    border:1px solid var(--amber-dim);
+    background:var(--panel-raised);
+    padding:16px 18px;
+  }
+  .review-head{
+    display:flex;
+    gap:14px;
+    margin-bottom:14px;
+  }
+  .review-head img{
+    width:120px;
+    height:90px;
+    object-fit:cover;
+    border:1px solid var(--border-bright);
+    flex-shrink:0;
+  }
+  .review-fieldgrid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(160px, 1fr));
+    gap:8px 12px;
+    margin-bottom:12px;
+  }
+  .review-fieldgrid label{
+    display:block;
+    font-size:10px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    margin-bottom:3px;
+  }
+  .review-fieldgrid input[type="text"]{
+    width:100%;
+    background:var(--input-bg);
+    border:1px solid var(--border);
+    color:var(--ink);
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    padding:7px 8px;
+    box-sizing:border-box;
+  }
+  .review-raw{
+    margin-top:10px;
+  }
+  .review-raw summary{
+    cursor:pointer;
+    color:var(--olive);
+    font-size:11px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+  }
+  .review-raw pre{
+    white-space:pre-wrap;
+    font-size:11px;
+    color:var(--ink-dim);
+    background:var(--input-bg);
+    border:1px solid var(--border);
+    padding:10px;
+    margin-top:8px;
+    max-height:200px;
+    overflow-y:auto;
+  }
   .lightbox-overlay{
     position:fixed;
     inset:0;
@@ -466,7 +626,7 @@
   }
 
   .row input[type="text"]{
-    background:#080a06;
+    background:var(--input-bg);
     border:1px solid var(--border);
     color:var(--ink);
     font-family:'JetBrains Mono',monospace;
@@ -474,7 +634,7 @@
     padding:9px 10px;
   }
   .row input[type="text"]:focus{outline:1.5px solid var(--amber-dim);}
-  .row input[type="text"]::placeholder{color:#3d4432;}
+  .row input[type="text"]::placeholder{color:var(--placeholder);}
 
   .pv-row{
     display:flex;
@@ -506,7 +666,6 @@
     gap:10px;
     flex-wrap:wrap;
   }
-  .pv-meta a{color:var(--olive);}
   .pv-notes-view{
     font-size:11.5px;
     color:var(--ink);
@@ -567,7 +726,7 @@
   .criteria-card textarea{
     width:100%;
     min-height:120px;
-    background:#080a06;
+    background:var(--input-bg);
     border:1px solid var(--border);
     color:var(--ink);
     font-family:'JetBrains Mono',monospace;
@@ -647,18 +806,35 @@
       <button class="stamp stamp-btn" id="actorStamp" title="Click to switch who's using this">Signed in as: <b id="actorValue">—</b></button>
       <button class="stamp stamp-btn" id="ohaStamp" title="Click to set your OHA/BAH allowance">OHA: <b id="ohaValue">Not set</b></button>
       <button class="stamp stamp-btn" id="printBtn" title="Open a printable / PDF-friendly view">Print / Export</button>
+      <button class="stamp stamp-btn" id="exportBackupBtn" title="Download everything as a JSON backup file">Export Backup</button>
     </div>
   </div>
 
   <div id="budgetOverlay" class="lightbox-overlay" style="display:none;">
     <div style="background:var(--panel); border:1px solid var(--amber-dim); padding:26px 30px; width:280px; text-align:left;">
       <div style="font-family:'Big Shoulders Condensed',sans-serif; font-weight:800; letter-spacing:0.08em; color:var(--amber); font-size:18px; text-transform:uppercase; margin-bottom:14px;">Monthly OHA / BAH</div>
-      <input type="text" id="ohaInput" placeholder="e.g. 2400" style="width:100%; background:#080a06; border:1px solid var(--border); color:var(--ink); font-family:'JetBrains Mono',monospace; font-size:12.5px; padding:9px 10px; margin-bottom:10px; box-sizing:border-box;">
+      <input type="text" id="ohaInput" placeholder="e.g. 2400" style="width:100%; background:var(--input-bg); border:1px solid var(--border); color:var(--ink); font-family:'JetBrains Mono',monospace; font-size:12.5px; padding:9px 10px; margin-bottom:10px; box-sizing:border-box;">
       <div class="status-msg" style="margin-bottom:10px;">Listings above this rent get flagged in red across the tracker.</div>
       <div class="row" style="margin-top:0;">
         <button id="ohaSaveBtn" style="flex:1;">Save</button>
         <button class="ghost" id="ohaCloseBtn" style="flex:1;">Close</button>
       </div>
+    </div>
+  </div>
+
+  <div id="compareBar" class="compare-bar" style="display:none;">
+    <span id="compareBarText">0 selected</span>
+    <button id="compareViewBtn">Compare</button>
+    <button class="ghost" id="compareClearBtn">Clear</button>
+  </div>
+
+  <div id="compareOverlay" class="lightbox-overlay" style="display:none;align-items:flex-start;padding:30px 12px;overflow-y:auto;">
+    <div style="background:var(--panel); border:1px solid var(--amber-dim); padding:22px; max-width:100%; width:100%; max-width:900px; margin:0 auto;">
+      <div class="row" style="justify-content:space-between;margin-top:0;">
+        <div style="font-family:'Big Shoulders Condensed',sans-serif; font-weight:800; letter-spacing:0.08em; color:var(--amber); font-size:20px; text-transform:uppercase;">Comparison</div>
+        <button class="ghost" id="compareCloseBtn">Close</button>
+      </div>
+      <div id="compareTableWrap" style="margin-top:14px;"></div>
     </div>
   </div>
 
@@ -690,6 +866,20 @@
 
     <div class="panel" id="librarySearchPanel" style="display:none;">
       <input type="text" id="librarySearch" placeholder="Filter by city, type, or listing ID...">
+      <div class="filter-bar">
+        <input type="text" class="filter-input" id="libMinRent" placeholder="Min €">
+        <input type="text" class="filter-input" id="libMaxRent" placeholder="Max €">
+        <input type="text" class="filter-input" id="libMinBeds" placeholder="Min beds">
+        <select class="filter-input" id="libType">
+          <option value="">All types</option>
+          <option value="HOUSE">House</option>
+          <option value="APARTMENT">Apartment</option>
+          <option value="TOWNHOUSE">Townhouse</option>
+          <option value="DUPLEX">Duplex</option>
+        </select>
+        <button class="ghost" id="libFilterClearBtn">Clear Filters</button>
+        <button class="ghost" id="libSortToggleBtn">Sort: Rent</button>
+      </div>
     </div>
 
     <div class="panel">
@@ -699,6 +889,16 @@
       <div class="row">
         <span class="status-msg" id="photoStatusMsg"></span>
       </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Screenshot Import</div>
+      <div class="status-msg" style="margin-bottom:10px;">Upload a screenshot from int.housingoffice or similar. Text is read on-device (nothing uploaded anywhere) — review and fix the fields before saving, since OCR isn't perfect.</div>
+      <input type="file" id="screenshotInput" accept="image/*">
+      <div class="row">
+        <span class="status-msg" id="screenshotStatusMsg"></span>
+      </div>
+      <div id="screenshotReviewWrap"></div>
     </div>
 
     <div id="dossierWrap"></div>
@@ -742,14 +942,14 @@
 <div id="authOverlay" class="lightbox-overlay" style="display:none;">
   <div style="background:var(--panel); border:1px solid var(--amber-dim); padding:26px 30px; width:280px; text-align:left;">
     <div style="font-family:'Big Shoulders Condensed',sans-serif; font-weight:800; letter-spacing:0.08em; color:var(--amber); font-size:18px; text-transform:uppercase; margin-bottom:14px;">Access Code</div>
-    <input type="password" id="authPasswordInput" placeholder="Password" style="width:100%; background:#080a06; border:1px solid var(--border); color:var(--ink); font-family:'JetBrains Mono',monospace; font-size:12.5px; padding:9px 10px; margin-bottom:10px; box-sizing:border-box;">
+    <input type="password" id="authPasswordInput" placeholder="Password" style="width:100%; background:var(--input-bg); border:1px solid var(--border); color:var(--ink); font-family:'JetBrains Mono',monospace; font-size:12.5px; padding:9px 10px; margin-bottom:10px; box-sizing:border-box;">
     <div id="authError" style="color:var(--gone); font-size:11px; margin-bottom:10px; min-height:14px;"></div>
     <button id="authSubmitBtn" style="width:100%;">Enter</button>
   </div>
 </div>
-<div id="syncBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:10000; background:#3a0f0a; color:#ffb0a0; border-bottom:2px solid #d9503f; padding:10px 16px; font-family:'JetBrains Mono',monospace; font-size:12.5px; text-align:center;">
+<div id="syncBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:10000; background:var(--gone-dim); color:#ffb0a0; border-bottom:2px solid var(--gone); padding:10px 16px; font-family:'JetBrains Mono',monospace; font-size:12.5px; text-align:center;">
   <span id="syncBannerText"></span>
-  <button id="syncBannerClose" style="margin-left:14px; background:transparent; border:1px solid #d9503f; color:#ffb0a0; font-family:'JetBrains Mono',monospace; font-size:11px; padding:2px 8px; cursor:pointer;">Dismiss</button>
+  <button id="syncBannerClose" style="margin-left:14px; background:transparent; border:1px solid var(--gone); color:#ffb0a0; font-family:'JetBrains Mono',monospace; font-size:11px; padding:2px 8px; cursor:pointer;">Dismiss</button>
 </div>
 
 <script>
@@ -928,6 +1128,9 @@
   const librarySearchPanel = document.getElementById('librarySearchPanel');
   const photoDocxInput = document.getElementById('photoDocxInput');
   const photoStatusMsg = document.getElementById('photoStatusMsg');
+  const screenshotInput = document.getElementById('screenshotInput');
+  const screenshotStatusMsg = document.getElementById('screenshotStatusMsg');
+  const screenshotReviewWrap = document.getElementById('screenshotReviewWrap');
   const tabToViewBtn = document.getElementById('tabToViewBtn');
   const tabCriteriaBtn = document.getElementById('tabCriteriaBtn');
   const toViewSection = document.getElementById('toViewSection');
@@ -955,6 +1158,20 @@
   const ohaInput = document.getElementById('ohaInput');
   const ohaSaveBtn = document.getElementById('ohaSaveBtn');
   const ohaCloseBtn = document.getElementById('ohaCloseBtn');
+  const exportBackupBtn = document.getElementById('exportBackupBtn');
+  const libMinRent = document.getElementById('libMinRent');
+  const libMaxRent = document.getElementById('libMaxRent');
+  const libMinBeds = document.getElementById('libMinBeds');
+  const libType = document.getElementById('libType');
+  const libFilterClearBtn = document.getElementById('libFilterClearBtn');
+  const libSortToggleBtn = document.getElementById('libSortToggleBtn');
+  const compareBar = document.getElementById('compareBar');
+  const compareBarText = document.getElementById('compareBarText');
+  const compareViewBtn = document.getElementById('compareViewBtn');
+  const compareClearBtn = document.getElementById('compareClearBtn');
+  const compareOverlay = document.getElementById('compareOverlay');
+  const compareCloseBtn = document.getElementById('compareCloseBtn');
+  const compareTableWrap = document.getElementById('compareTableWrap');
 
   const TAB_SECTIONS = {sitrep: sitrepSection, library: librarySection, trends: trendsSection, toview: toViewSection, criteria: criteriaSection, log: logSection};
   const TAB_BTNS = {sitrep: tabSitrepBtn, library: tabLibraryBtn, trends: tabTrendsBtn, toview: tabToViewBtn, criteria: tabCriteriaBtn, log: tabLogBtn};
@@ -983,6 +1200,7 @@
   const OHA_KEY = 'brunssum-oha';
   const ACTIVITY_KEY = 'brunssum-activity-log';
   const ACTOR_LOCAL_KEY = 'brunssum_actor_name';
+  const SCORES_KEY = 'brunssum-scores';
 
   let watchMap = {};       // { [listingId]: lastKnownRecord }
   let lastCurrList = null; // most recent full listing set we know about
@@ -994,6 +1212,11 @@
   let ohaAllowance = null;  // number or null
   let activityLog = [];     // array of {actor, action, ts}, newest last
   const ACTOR_CYCLE = ['Nick', 'Anne', 'Guest'];
+  let listingScores = {};   // { [id]: { [criterionText]: bool } }
+  let rosterFilters = {minRent:'', maxRent:'', minBeds:'', type:''};
+  let libraryFilters = {minRent:'', maxRent:'', minBeds:'', type:''};
+  let compareSet = new Map(); // id -> comparable object
+  let pvPendingDuplicate = null; // address string awaiting a second confirm click
 
   function setStatus(msg){ statusMsg.textContent = msg; }
 
@@ -1146,7 +1369,7 @@
       <td>${photoCellHTML(rec.id)}</td>
       <td><button class="watch-btn ${watched ? 'active' : ''}" data-id="${escapeHTML(rec.id)}" title="${watched ? 'Remove from watchlist' : 'Add to watchlist'}">${watched ? '★' : '☆'}</button></td>
       <td>${tag||''}</td>
-      <td class="addr">${escapeHTML(rec.address || rec.postal || '—')}</td>
+      <td class="addr">${escapeHTML(rec.address || rec.postal || '—')}${(rec.address || rec.postal) ? `<div class="row-map-link">${mapLinkHTML(rec.address || rec.postal)}</div>` : ''}</td>
       <td>${escapeHTML(rec.type)}</td>
       <td>${escapeHTML(rec.beds)}bd / ${escapeHTML(rec.baths)}ba</td>
       <td class="${isOverBudget(rec.rentNum) ? 'over-budget' : ''}">€${rec.rentNum ? rec.rentNum.toLocaleString() : escapeHTML(rec.rentRaw)}</td>
@@ -1159,6 +1382,12 @@
 
   function escapeHTML(s){
     return (s||'').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function mapLinkHTML(address){
+    if (!address) return '';
+    const url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(address);
+    return `<a href="${url}" target="_blank" rel="noopener" title="Open in Google Maps">📍 Map</a>`;
   }
 
   function tableShell(rowsHTML){
@@ -1200,7 +1429,7 @@
       const tag = status === 'gone'
         ? '<span class="tag g">GONE</span>'
         : status === 'unknown'
-          ? '<span class="tag" style="background:var(--olive);color:#10140b;">TRACKED</span>'
+          ? '<span class="tag" style="background:var(--olive);color:#0a1424;">TRACKED</span>'
           : '<span class="tag" style="background:var(--amber);color:#1a1200;">WATCH</span>';
       const cls = status === 'gone' ? 'gone-row' : '';
       return rowHTML(rec, cls, tag);
@@ -1268,70 +1497,106 @@
     `;
   }
 
+  let rosterTableOpen = false;
   function renderRoster(currList){
+    const existing = document.getElementById('rosterPanelContainer');
+    if (existing) existing.remove();
+
     const rosterPanel = document.createElement('div');
     rosterPanel.className = 'panel';
-    const sorted = [...currList].sort((a,b) => {
+    rosterPanel.id = 'rosterPanelContainer';
+
+    const filtered = applyListFilters(currList, rosterFilters);
+    const sorted = [...filtered].sort((a,b) => {
       const wa = watchMap[a.id] ? 1 : 0;
       const wb = watchMap[b.id] ? 1 : 0;
       if (wa !== wb) return wb - wa;
       return (a.address||'').localeCompare(b.address||'');
     });
+    const filterNote = filtersActive(rosterFilters) ? ` (${sorted.length} of ${currList.length})` : ` (${currList.length})`;
     rosterPanel.innerHTML = `
       <div class="panel-title">
-        <span class="roster-toggle" id="rosterToggle">▸ Full Current Roster (${currList.length})</span>
+        <span class="roster-toggle" id="rosterToggle">${rosterTableOpen ? '▾' : '▸'} Full Current Roster${filterNote}</span>
       </div>
-      <div id="rosterTable" style="display:none;margin-top:8px;">
+      <div class="filter-bar">
+        <input type="text" class="filter-input" id="rosterMinRent" placeholder="Min €" value="${escapeHTML(rosterFilters.minRent)}">
+        <input type="text" class="filter-input" id="rosterMaxRent" placeholder="Max €" value="${escapeHTML(rosterFilters.maxRent)}">
+        <input type="text" class="filter-input" id="rosterMinBeds" placeholder="Min beds" value="${escapeHTML(rosterFilters.minBeds)}">
+        <select class="filter-input" id="rosterType">
+          <option value="">All types</option>
+          <option value="HOUSE" ${rosterFilters.type === 'HOUSE' ? 'selected' : ''}>House</option>
+          <option value="APARTMENT" ${rosterFilters.type === 'APARTMENT' ? 'selected' : ''}>Apartment</option>
+          <option value="TOWNHOUSE" ${rosterFilters.type === 'TOWNHOUSE' ? 'selected' : ''}>Townhouse</option>
+          <option value="DUPLEX" ${rosterFilters.type === 'DUPLEX' ? 'selected' : ''}>Duplex</option>
+        </select>
+        <button class="ghost" id="rosterFilterClearBtn">Clear Filters</button>
+      </div>
+      <div id="rosterTable" style="display:${rosterTableOpen ? 'block' : 'none'};margin-top:8px;">
         ${tableShell(sorted.map(r => rowHTML(r, '', '')).join(''))}
       </div>
     `;
     resultsWrap.appendChild(rosterPanel);
     document.getElementById('rosterToggle').addEventListener('click', () => {
-      const t = document.getElementById('rosterTable');
-      const toggle = document.getElementById('rosterToggle');
-      const open = t.style.display !== 'none';
-      t.style.display = open ? 'none' : 'block';
-      toggle.textContent = (open ? '▸' : '▾') + ` Full Current Roster (${currList.length})`;
+      rosterTableOpen = !rosterTableOpen;
+      renderRoster(lastCurrList);
+    });
+    ['MinRent','MaxRent','MinBeds'].forEach(suffix => {
+      const field = {MinRent:'minRent', MaxRent:'maxRent', MinBeds:'minBeds'}[suffix];
+      document.getElementById('roster'+suffix).addEventListener('input', (e) => {
+        rosterFilters[field] = e.target.value.trim();
+        renderRoster(lastCurrList);
+      });
+    });
+    document.getElementById('rosterType').addEventListener('change', (e) => {
+      rosterFilters.type = e.target.value;
+      renderRoster(lastCurrList);
+    });
+    document.getElementById('rosterFilterClearBtn').addEventListener('click', () => {
+      rosterFilters = {minRent:'', maxRent:'', minBeds:'', type:''};
+      renderRoster(lastCurrList);
     });
   }
 
   // ---------- Storage ----------
-  async function loadSnapshot(){
+  // ---------- Shared storage helpers ----------
+  // Every load*/save* pair below follows the same get-parse-fallback and
+  // stringify-set-report pattern. Centralizing it here means the storage
+  // contract only needs to be correct in one place.
+  async function loadJSON(key, fallback){
     try{
-      const res = await window.storage.get(STORE_KEY, false);
+      const res = await window.storage.get(key, false);
       if (res && res.value) return JSON.parse(res.value);
-      return null;
+      return fallback;
     } catch(e){
-      return null;
+      return fallback;
     }
+  }
+  async function saveJSON(key, value, onError){
+    try{
+      await window.storage.set(key, JSON.stringify(value), false);
+      return true;
+    } catch(e){
+      if (onError) onError();
+      return false;
+    }
+  }
+
+  async function loadSnapshot(){
+    return loadJSON(STORE_KEY, null);
   }
 
   async function saveSnapshot(list){
     const payload = { savedAt: new Date().toISOString(), listings: list };
-    try{
-      await window.storage.set(STORE_KEY, JSON.stringify(payload), false);
-    } catch(e){
-      setStatus('Storage error — snapshot not saved. Try again.');
-    }
+    await saveJSON(STORE_KEY, payload, () => setStatus('Storage error — snapshot not saved. Try again.'));
     return payload;
   }
 
   async function loadWatch(){
-    try{
-      const res = await window.storage.get(WATCH_KEY, false);
-      if (res && res.value) return JSON.parse(res.value);
-      return {};
-    } catch(e){
-      return {};
-    }
+    return loadJSON(WATCH_KEY, {});
   }
 
   async function saveWatch(map){
-    try{
-      await window.storage.set(WATCH_KEY, JSON.stringify(map), false);
-    } catch(e){
-      setStatus('Storage error — watchlist not saved. Try again.');
-    }
+    return saveJSON(WATCH_KEY, map, () => setStatus('Storage error — watchlist not saved. Try again.'));
   }
 
   async function toggleWatch(id){
@@ -1493,21 +1758,11 @@
 
   // ---------- Dossier storage ----------
   async function loadDossiers(){
-    try{
-      const res = await window.storage.get(DOSSIER_KEY, false);
-      if (res && res.value) return JSON.parse(res.value);
-      return {};
-    } catch(e){
-      return {};
-    }
+    return loadJSON(DOSSIER_KEY, {});
   }
 
   async function saveDossiersToStore(map){
-    try{
-      await window.storage.set(DOSSIER_KEY, JSON.stringify(map), false);
-    } catch(e){
-      dossierStatusMsg.textContent = 'Storage error — dossiers not saved. Try again.';
-    }
+    return saveJSON(DOSSIER_KEY, map, () => { dossierStatusMsg.textContent = 'Storage error — dossiers not saved. Try again.'; });
   }
 
   let dossierMap = {};
@@ -1527,8 +1782,10 @@
 
   function dossierCardHTML(rec){
     const watched = !!watchMap[rec.id];
+    const comparing = compareSet.has(rec.id);
     const bathParts = [rec.bathsFull, rec.baths34, rec.bathsHalf].filter(v => v !== '');
     const bathSummary = bathParts.length ? `${bathParts[0]||0}F/${bathParts[1]||0}3Q/${bathParts[2]||0}H bath` : '';
+    const scoreBadge = scoreBadgeHTML(rec.id);
     return `<div class="dossier-card ${watched ? 'watched' : ''}" data-card-id="${escapeHTML(rec.id)}">
       <div class="dossier-head dossier-head-row" data-toggle-id="${escapeHTML(rec.id)}">
         ${photoCellHTMLLg(rec.id)}
@@ -1544,9 +1801,14 @@
             <span>${escapeHTML(rec.sqm)}m²</span>
             <span>Avail ${escapeHTML(rec.available)}</span>
             <span>ID ${escapeHTML(rec.id)}</span>
+            ${rec.city ? `<span>${mapLinkHTML(rec.city)}</span>` : ''}
+            ${scoreBadge ? `<span>${scoreBadge}</span>` : ''}
           </div>
         </div>
-        <div class="dossier-rent ${isOverBudget(rec.rentNum) ? 'over-budget' : ''}">€${rec.rentNum ? rec.rentNum.toLocaleString() : escapeHTML(rec.rentRaw)}</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+          <div class="dossier-rent ${isOverBudget(rec.rentNum) ? 'over-budget' : ''}">€${rec.rentNum ? rec.rentNum.toLocaleString() : escapeHTML(rec.rentRaw)}</div>
+          <button class="compare-btn ${comparing ? 'active' : ''}" data-compare-id="${escapeHTML(rec.id)}">${comparing ? '✓ Comparing' : '+ Compare'}</button>
+        </div>
         </div>
       </div>
       <div class="dossier-body" id="dossier-body-${escapeHTML(rec.id)}">
@@ -1562,6 +1824,7 @@
         </div>
         ${rec.description ? `<div class="desc">${escapeHTML(rec.description)}</div>` : ''}
         ${rec.amenitiesText ? `<div class="amenities">${escapeHTML(rec.amenitiesText)}</div>` : ''}
+        ${criteriaChecklistHTML(rec.id)}
       </div>
     </div>`;
   }
@@ -1582,13 +1845,20 @@
         return hay.includes(filterText);
       });
     }
+    list = applyListFilters(list, libraryFilters);
     const sorted = list.sort((a, b) => {
       const wa = watchMap[a.id] ? 1 : 0;
       const wb = watchMap[b.id] ? 1 : 0;
       if (wa !== wb) return wb - wa;
+      if (librarySortByScore){
+        const sa = scoreFor(a.id), sb = scoreFor(b.id);
+        const ma = sa ? sa.met : -1, mb = sb ? sb.met : -1;
+        if (ma !== mb) return mb - ma;
+      }
       return (a.rentNum || 0) - (b.rentNum || 0);
     });
-    const heading = filterText ? `Property Dossiers (${sorted.length} of ${ids.length})` : `Property Dossiers (${ids.length})`;
+    const filterNote = (filterText || filtersActive(libraryFilters)) ? ` (${sorted.length} of ${ids.length})` : ` (${ids.length})`;
+    const heading = `Property Dossiers${filterNote}`;
     dossierWrap.innerHTML = `<div class="panel">
       <div class="panel-title">${heading}</div>
       ${sorted.length ? sorted.map(dossierCardHTML).join('') : '<div class="dossier-empty">No dossiers match that filter.</div>'}
@@ -1600,10 +1870,26 @@
   dossierWrap.addEventListener('click', (e) => {
     if (e.target.closest('.watch-btn')) return; // handled by board-level delegation
     if (e.target.closest('.photo-thumb-lg')) return; // handled by board-level lightbox
+    if (e.target.closest('.compare-btn')) return; // handled below
     const head = e.target.closest('[data-toggle-id]');
     if (!head) return;
     const body = document.getElementById(`dossier-body-${head.dataset.toggleId}`);
     if (body) body.classList.toggle('open');
+  });
+
+  dossierWrap.addEventListener('click', (e) => {
+    const cbtn = e.target.closest('.compare-btn');
+    if (!cbtn) return;
+    const id = cbtn.dataset.compareId;
+    toggleCompare(id, dossierMap[id], 'dossier');
+  });
+
+  dossierWrap.addEventListener('change', (e) => {
+    const cb = e.target.closest('[data-score-criterion]');
+    if (!cb) return;
+    toggleScoreCriterion(cb.dataset.scoreId, cb.dataset.scoreCriterion).then(() => {
+      renderDossiers();
+    });
   });
 
   saveDossiersBtn.addEventListener('click', async () => {
@@ -1638,21 +1924,11 @@
   }
 
   async function loadHistory(){
-    try{
-      const res = await window.storage.get(HISTORY_KEY, false);
-      if (res && res.value) return JSON.parse(res.value);
-      return {};
-    } catch(e){
-      return {};
-    }
+    return loadJSON(HISTORY_KEY, {});
   }
 
   async function saveHistoryToStore(map){
-    try{
-      await window.storage.set(HISTORY_KEY, JSON.stringify(map), false);
-    } catch(e){
-      setStatus('Storage error — history not saved.');
-    }
+    return saveJSON(HISTORY_KEY, map, () => setStatus('Storage error — history not saved.'));
   }
 
   async function recordHistory(saved, diff, total){
@@ -1802,27 +2078,15 @@
 
   // ---------- Photo storage ----------
   async function loadPhotos(){
-    try{
-      const res = await window.storage.get(PHOTO_KEY, false);
-      if (res && res.value) return JSON.parse(res.value);
-      return {};
-    } catch(e){
-      return {};
-    }
+    return loadJSON(PHOTO_KEY, {});
   }
 
   async function savePhotosToStore(map){
-    try{
-      const json = JSON.stringify(map);
-      if (json.length > 4_500_000){
-        photoStatusMsg.textContent = 'Photo storage is near capacity — some photos may not save. Consider this a rolling cache of recent listings.';
-      }
-      await window.storage.set(PHOTO_KEY, json, false);
-      return true;
-    } catch(e){
-      photoStatusMsg.textContent = 'Storage error — photos not saved. Try again with fewer listings.';
-      return false;
+    const json = JSON.stringify(map);
+    if (json.length > 4_500_000){
+      photoStatusMsg.textContent = 'Photo storage is near capacity — some photos may not save. Consider this a rolling cache of recent listings.';
     }
+    return saveJSON(PHOTO_KEY, map, () => { photoStatusMsg.textContent = 'Storage error — photos not saved. Try again with fewer listings.'; });
   }
 
   // ---------- Docx photo import ----------
@@ -1930,6 +2194,185 @@
     photoDocxInput.value = '';
   });
 
+  // ---------- Screenshot OCR import ----------
+  let tesseractLoadPromise = null;
+  function ensureTesseract(){
+    if (window.Tesseract) return Promise.resolve();
+    if (tesseractLoadPromise) return tesseractLoadPromise;
+    tesseractLoadPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Failed to load the OCR engine'));
+      document.head.appendChild(script);
+    });
+    return tesseractLoadPromise;
+  }
+
+  function readFileAsDataURL(file){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function grabAfterLabel(text, label){
+    const re = new RegExp(label + '\\s*[:\\-]?\\s*([^\\n\\r]+)', 'i');
+    const m = text.match(re);
+    return m ? m[1].trim().replace(/\s{2,}/g, ' ') : '';
+  }
+
+  const SCREENSHOT_FIELDS = [
+    {key: 'city', label: 'Location / Address', required: true},
+    {key: 'source', label: 'Source'},
+    {key: 'type', label: 'Type'},
+    {key: 'beds', label: 'Bedrooms'},
+    {key: 'available', label: 'Available'},
+    {key: 'rent', label: 'Rent €'},
+    {key: 'deposit', label: 'Deposit €'},
+    {key: 'livingRoom', label: 'Living Room'},
+    {key: 'kitchen', label: 'Kitchen'},
+    {key: 'bathroom', label: 'Bathroom'},
+    {key: 'attic', label: 'Attic'},
+    {key: 'cellar', label: 'Cellar'},
+    {key: 'storage', label: 'Storage'},
+    {key: 'garden', label: 'Garden'},
+    {key: 'garage', label: 'Garage'},
+    {key: 'hall', label: 'Hall'},
+    {key: 'distance', label: 'Distance to Installation'},
+    {key: 'drivingTime', label: 'Driving Time'}
+  ];
+
+  function parseScreenshotText(text){
+    const rentMatch = text.match(/RENT\s*[:\-]?\s*€?\s*([\d.,]+)/i);
+    const depositMatch = text.match(/DEPOSIT\s*[:\-]?\s*€?\s*([\d.,]+)/i);
+    const bedsMatch = text.match(/BEDROOM\(?S?\)?\s*[:\-]?\s*(\d+)/i);
+    const typeMatch = text.match(/TYPE\s*[:\-]?\s*(HOUSE|APARTMENT|TOWNHOUSE|DUPLEX|CONDO)/i);
+    return {
+      city: '',
+      source: 'Instagram — Int. Housing Office',
+      type: typeMatch ? typeMatch[1].toUpperCase() : grabAfterLabel(text, 'TYPE'),
+      beds: bedsMatch ? bedsMatch[1] : '',
+      available: grabAfterLabel(text, 'DATE AVAILABLE'),
+      rent: rentMatch ? rentMatch[1] : '',
+      deposit: depositMatch ? depositMatch[1] : '',
+      livingRoom: grabAfterLabel(text, 'LIVING ROOM'),
+      kitchen: grabAfterLabel(text, 'KITCHEN'),
+      bathroom: grabAfterLabel(text, 'BATHROOM'),
+      attic: grabAfterLabel(text, 'ATTIC'),
+      cellar: grabAfterLabel(text, 'CELLAR'),
+      storage: grabAfterLabel(text, 'STORAGE'),
+      garden: grabAfterLabel(text, 'GARDEN'),
+      garage: grabAfterLabel(text, 'GARAGE'),
+      hall: grabAfterLabel(text, 'HALL'),
+      distance: grabAfterLabel(text, 'DISTANCE TO'),
+      drivingTime: grabAfterLabel(text, 'DRIVING TIME')
+    };
+  }
+
+  function renderScreenshotReview(imageDataUrl, fields, rawText){
+    const fieldInputsHTML = SCREENSHOT_FIELDS.map(f => `
+      <div>
+        <label>${escapeHTML(f.label)}${f.required ? ' *' : ''}</label>
+        <input type="text" id="sr-${f.key}" value="${escapeHTML(fields[f.key] || '')}" placeholder="${f.required ? 'Required — OCR often misses this' : ''}">
+      </div>`).join('');
+    screenshotReviewWrap.innerHTML = `<div class="review-card">
+      <div class="review-head">
+        <img src="${imageDataUrl}" alt="">
+        <div class="status-msg">Review the fields below — OCR is a first draft, not gospel. Fix anything wrong, fill in the location, then save.</div>
+      </div>
+      <div class="review-fieldgrid">${fieldInputsHTML}</div>
+      <details class="review-raw">
+        <summary>Raw OCR text (for cross-checking)</summary>
+        <pre>${escapeHTML(rawText)}</pre>
+      </details>
+      <div class="row">
+        <button id="screenshotSaveBtn">Save to Library</button>
+        <button class="ghost" id="screenshotDiscardBtn">Discard</button>
+      </div>
+    </div>`;
+
+    document.getElementById('screenshotDiscardBtn').addEventListener('click', () => {
+      screenshotReviewWrap.innerHTML = '';
+      screenshotStatusMsg.textContent = '';
+    });
+
+    document.getElementById('screenshotSaveBtn').addEventListener('click', async () => {
+      const collected = {};
+      SCREENSHOT_FIELDS.forEach(f => {
+        collected[f.key] = document.getElementById(`sr-${f.key}`).value.trim();
+      });
+      if (!collected.city){
+        screenshotStatusMsg.textContent = 'Location / Address is required before saving.';
+        return;
+      }
+
+      const id = 'ig' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const amenitiesParts = [];
+      ['livingRoom','kitchen','bathroom','attic','cellar','storage','garden','garage','hall'].forEach(k => {
+        if (collected[k]){
+          const label = SCREENSHOT_FIELDS.find(f => f.key === k).label;
+          amenitiesParts.push(`${label}: ${collected[k]}`);
+        }
+      });
+      const descParts = [];
+      if (collected.source) descParts.push(collected.source);
+      if (collected.distance) descParts.push(`Distance: ${collected.distance}`);
+      if (collected.drivingTime) descParts.push(`Driving time: ${collected.drivingTime}`);
+
+      const rentNum = parseInt((collected.rent || '').replace(/[^\d]/g, ''), 10) || null;
+
+      dossierMap[id] = {
+        id,
+        city: collected.city,
+        type: collected.type,
+        available: collected.available,
+        rentRaw: collected.rent,
+        rentNum,
+        depositRaw: collected.deposit,
+        beds: collected.beds,
+        bathsFull: '', baths34: '', bathsHalf: '',
+        sqft: '', sqm: '',
+        furnished: '', yearBuilt: '', pets: '', smoking: '', leaseTerm: '', scra: '', inspection: '',
+        description: descParts.join(' — '),
+        amenitiesText: amenitiesParts.join(' • '),
+        savedAt: new Date().toISOString()
+      };
+      photoMap[id] = imageDataUrl;
+
+      await saveDossiersToStore(dossierMap);
+      await savePhotosToStore(photoMap);
+      renderDossiers();
+      setActiveTab('library');
+      screenshotReviewWrap.innerHTML = '';
+      screenshotStatusMsg.textContent = `Saved "${collected.city}" to the library.`;
+      logActivity(`added "${collected.city}" from a screenshot`);
+    });
+  }
+
+  screenshotInput.addEventListener('change', async () => {
+    const file = screenshotInput.files[0];
+    if (!file) return;
+    screenshotReviewWrap.innerHTML = '';
+    screenshotStatusMsg.textContent = 'Loading OCR engine...';
+    try{
+      await ensureTesseract();
+      const imageDataUrl = await readFileAsDataURL(file);
+      screenshotStatusMsg.textContent = 'Reading text from image... this can take a few seconds.';
+      const worker = await Tesseract.createWorker('eng');
+      const { data } = await worker.recognize(imageDataUrl);
+      await worker.terminate();
+      const fields = parseScreenshotText(data.text);
+      renderScreenshotReview(imageDataUrl, fields, data.text);
+      screenshotStatusMsg.textContent = 'Text extracted. Review the fields below before saving.';
+    } catch(err){
+      screenshotStatusMsg.textContent = `Could not read that image: ${err.message}`;
+    }
+    screenshotInput.value = '';
+  });
+
   // ---------- Priority homes (To View list) ----------
   const SEED_PRIORITY_HOMES = [
     {address:'Oude Lindestraat 23 6411 EH Heerlen', price:2900, source:'Homes.mil', note:'', link:'', listingId:'1103488', status:'to-view'},
@@ -1951,21 +2394,11 @@
   }
 
   async function loadPriorityHomes(){
-    try{
-      const res = await window.storage.get(PRIORITY_KEY, false);
-      if (res && res.value) return JSON.parse(res.value);
-      return null;
-    } catch(e){
-      return null;
-    }
+    return loadJSON(PRIORITY_KEY, null);
   }
 
   async function savePriorityHomes(){
-    try{
-      await window.storage.set(PRIORITY_KEY, JSON.stringify(priorityHomes), false);
-    } catch(e){
-      pvStatusMsg.textContent = 'Storage error — list not saved.';
-    }
+    return saveJSON(PRIORITY_KEY, priorityHomes, () => { pvStatusMsg.textContent = 'Storage error — list not saved.'; });
   }
 
   const STATUS_CYCLE = ['to-view', 'scheduled', 'viewed', 'removed'];
@@ -1979,15 +2412,19 @@
     if (entry.note) metaParts.push(escapeHTML(entry.note));
     if (entry.listingId) metaParts.push(`ID ${escapeHTML(entry.listingId)}`);
     const linkHTML = entry.link ? `<a href="${escapeHTML(entry.link)}" target="_blank" rel="noopener">Open listing ↗</a>` : '';
+    const mapHTML = entry.address ? mapLinkHTML(entry.address) : '';
     const photoHTML = entry.listingId ? photoCellHTML(entry.listingId) : '';
     const notesHTML = entry.notes ? `<div class="pv-notes-view">📝 ${escapeHTML(entry.notes)}</div>` : '';
+    const viewingHTML = entry.viewingAt ? `<div class="pv-viewing">🗓 Viewing: ${escapeHTML(new Date(entry.viewingAt).toLocaleString(undefined, {dateStyle:'medium', timeStyle:'short'}))}<a href="#" data-ics-id="${escapeHTML(entry.id)}">Add to Calendar</a></div>` : '';
+    const comparing = compareSet.has(entry.id);
     return `<div class="pv-row ${entry.status === 'removed' ? 'removed' : ''}" data-pv-id="${escapeHTML(entry.id)}">
       <div class="pv-order">${index + 1}</div>
       ${photoHTML ? `<div>${photoHTML}</div>` : ''}
       <div class="pv-body">
         <div class="pv-view">
           <div class="pv-addr">${escapeHTML(entry.address)}</div>
-          <div class="pv-meta">${metaParts.join(' · ')}${linkHTML ? ' · ' + linkHTML : ''}</div>
+          <div class="pv-meta">${metaParts.join(' · ')}${mapHTML ? ' · ' + mapHTML : ''}${linkHTML ? ' · ' + linkHTML : ''}</div>
+          ${viewingHTML}
           ${notesHTML}
         </div>
         <div class="pv-edit" style="display:none;">
@@ -2001,12 +2438,17 @@
             <input type="text" class="pv-e-link" value="${escapeHTML(entry.link || '')}" placeholder="Link URL" style="flex:2;min-width:160px;">
             <input type="text" class="pv-e-listingid" value="${escapeHTML(entry.listingId || '')}" placeholder="Listing ID" style="flex:1;min-width:100px;">
           </div>
+          <div class="row" style="flex-wrap:wrap;">
+            <label style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-dim);display:block;width:100%;">Viewing Date/Time</label>
+            <input type="datetime-local" class="pv-e-viewing" value="${toDatetimeLocal(entry.viewingAt)}" style="flex:1;min-width:200px;background:var(--input-bg);border:1px solid var(--border);color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:12px;padding:7px 8px;">
+          </div>
           <textarea class="pv-e-notes pv-notes-input" placeholder="Viewing notes...">${escapeHTML(entry.notes || '')}</textarea>
         </div>
       </div>
       <div class="pv-controls">
         <button class="pv-status-btn st-${entry.status}" data-pv-action="cycle-status" title="Click to change status">${STATUS_LABEL[entry.status]}</button>
         <button data-pv-action="toggle-edit" title="Edit this entry">Edit</button>
+        <button class="compare-btn ${comparing ? 'active' : ''}" data-pv-action="toggle-compare">${comparing ? '✓' : '+'} Compare</button>
         <button data-pv-action="move-up" title="Move up">▲</button>
         <button data-pv-action="move-down" title="Move down">▼</button>
         <button class="pv-del" data-pv-action="delete" title="Remove from list">✕</button>
@@ -2028,6 +2470,13 @@
 
   priorityHomesWrap.addEventListener('click', async (e) => {
     if (e.target.closest('.photo-thumb')) return; // handled by board-level lightbox
+    const icsLink = e.target.closest('[data-ics-id]');
+    if (icsLink){
+      e.preventDefault();
+      const entry = priorityHomes.find(p => p.id === icsLink.dataset.icsId);
+      if (entry) downloadICS(entry);
+      return;
+    }
     const btn = e.target.closest('[data-pv-action]');
     if (!btn) return;
     const row = e.target.closest('[data-pv-id]');
@@ -2035,6 +2484,11 @@
     const idx = priorityHomes.findIndex(p => p.id === id);
     if (idx < 0) return;
     const action = btn.dataset.pvAction;
+
+    if (action === 'toggle-compare'){
+      toggleCompare(id, priorityHomes[idx], 'priority');
+      return;
+    }
 
     if (action === 'toggle-edit'){
       const viewEl = row.querySelector('.pv-view');
@@ -2054,6 +2508,8 @@
         entry.link = row.querySelector('.pv-e-link').value.trim();
         entry.listingId = row.querySelector('.pv-e-listingid').value.trim();
         entry.notes = row.querySelector('.pv-e-notes').value.trim();
+        const viewingRaw = row.querySelector('.pv-e-viewing').value;
+        entry.viewingAt = viewingRaw ? new Date(viewingRaw).toISOString() : null;
         await savePriorityHomes();
         renderPriorityHomes();
         logActivity(`edited "${entry.address}" in To View`);
@@ -2093,6 +2549,15 @@
       pvStatusMsg.textContent = 'Enter an address or name first.';
       return;
     }
+    if (pvPendingDuplicate !== address){
+      const dup = findSimilarAddress(address);
+      if (dup && dup.sim > 0.55){
+        pvPendingDuplicate = address;
+        pvStatusMsg.textContent = `Looks similar to "${dup.label}" already in ${dup.source}. Click Add to List again to confirm.`;
+        return;
+      }
+    }
+    pvPendingDuplicate = null;
     const priceVal = pvPrice.value.trim().replace(/[^\d]/g, '');
     priorityHomes.push({
       id: makeId(),
@@ -2110,6 +2575,7 @@
     pvStatusMsg.textContent = 'Added.';
     logActivity(`added "${address}" to To View`);
   });
+  pvAddress.addEventListener('input', () => { pvPendingDuplicate = null; });
 
   // ---------- Criteria (family priorities) ----------
   const SEED_CRITERIA = {
@@ -2121,19 +2587,11 @@
   const CRITERIA_LABELS = {anne: 'Anne', nick: 'Nick', alma: 'Alma', multiple: 'Multiple Agreement'};
 
   async function loadCriteria(){
-    try{
-      const res = await window.storage.get(CRITERIA_KEY, false);
-      if (res && res.value) return JSON.parse(res.value);
-      return null;
-    } catch(e){
-      return null;
-    }
+    return loadJSON(CRITERIA_KEY, null);
   }
 
   async function saveCriteria(){
-    try{
-      await window.storage.set(CRITERIA_KEY, JSON.stringify(criteria), false);
-    } catch(e){}
+    return saveJSON(CRITERIA_KEY, criteria);
   }
 
   function criteriaCardHTML(key){
@@ -2175,6 +2633,7 @@
       await saveCriteria();
       renderCriteria();
       logActivity(`updated ${CRITERIA_LABELS[key]} priorities`);
+      if (key === 'multiple') renderDossiers();
     }
   });
 
@@ -2202,18 +2661,10 @@
 
   // ---------- Budget tracker (OHA / BAH) ----------
   async function loadOha(){
-    try{
-      const res = await window.storage.get(OHA_KEY, false);
-      if (res && res.value) return JSON.parse(res.value);
-      return null;
-    } catch(e){
-      return null;
-    }
+    return loadJSON(OHA_KEY, null);
   }
   async function saveOha(){
-    try{
-      await window.storage.set(OHA_KEY, JSON.stringify(ohaAllowance), false);
-    } catch(e){}
+    return saveJSON(OHA_KEY, ohaAllowance);
   }
   function renderOhaStamp(){
     ohaValue.textContent = ohaAllowance ? `€${Number(ohaAllowance).toLocaleString()}` : 'Not set';
@@ -2245,18 +2696,10 @@
 
   // ---------- Activity log ----------
   async function loadActivity(){
-    try{
-      const res = await window.storage.get(ACTIVITY_KEY, false);
-      if (res && res.value) return JSON.parse(res.value);
-      return [];
-    } catch(e){
-      return [];
-    }
+    return loadJSON(ACTIVITY_KEY, []);
   }
   async function saveActivityToStore(){
-    try{
-      await window.storage.set(ACTIVITY_KEY, JSON.stringify(activityLog), false);
-    } catch(e){}
+    return saveJSON(ACTIVITY_KEY, activityLog);
   }
   function relativeTime(iso){
     const diffMs = Date.now() - new Date(iso).getTime();
@@ -2303,11 +2746,242 @@
     window.print();
   });
 
+  // ---------- Filters ----------
+  function applyListFilters(list, filters){
+    return list.filter(r => {
+      const rent = r.rentNum;
+      if (filters.minRent && (!rent || rent < Number(filters.minRent))) return false;
+      if (filters.maxRent && (!rent || rent > Number(filters.maxRent))) return false;
+      if (filters.minBeds && (!r.beds || Number(r.beds) < Number(filters.minBeds))) return false;
+      if (filters.type && (r.type || '').toUpperCase() !== filters.type.toUpperCase()) return false;
+      return true;
+    });
+  }
+
+  function filtersActive(filters){
+    return Boolean(filters.minRent || filters.maxRent || filters.minBeds || filters.type);
+  }
+
+  [libMinRent, libMaxRent, libMinBeds].forEach((el, i) => {
+    const field = ['minRent', 'maxRent', 'minBeds'][i];
+    el.addEventListener('input', () => { libraryFilters[field] = el.value.trim(); renderDossiers(); });
+  });
+  libType.addEventListener('change', () => { libraryFilters.type = libType.value; renderDossiers(); });
+  libFilterClearBtn.addEventListener('click', () => {
+    libraryFilters = {minRent:'', maxRent:'', minBeds:'', type:''};
+    libMinRent.value = ''; libMaxRent.value = ''; libMinBeds.value = ''; libType.value = '';
+    renderDossiers();
+  });
+  let librarySortByScore = false;
+  libSortToggleBtn.addEventListener('click', () => {
+    librarySortByScore = !librarySortByScore;
+    libSortToggleBtn.textContent = librarySortByScore ? 'Sort: Match' : 'Sort: Rent';
+    renderDossiers();
+  });
+
+  // ---------- Duplicate detection ----------
+  function tokenSet(str){
+    return new Set((str || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean));
+  }
+  function jaccardSimilarity(a, b){
+    const sa = tokenSet(a), sb = tokenSet(b);
+    if (!sa.size || !sb.size) return 0;
+    let inter = 0;
+    sa.forEach(t => { if (sb.has(t)) inter++; });
+    const union = new Set([...sa, ...sb]).size;
+    return union ? inter / union : 0;
+  }
+  function findSimilarAddress(address){
+    let best = null;
+    (priorityHomes || []).forEach(p => {
+      const sim = jaccardSimilarity(address, p.address);
+      if (sim > 0.5 && (!best || sim > best.sim)) best = {label: p.address, sim, source: 'To View'};
+    });
+    Object.values(dossierMap).forEach(d => {
+      const sim = jaccardSimilarity(address, d.city);
+      if (sim > 0.5 && (!best || sim > best.sim)) best = {label: d.city, sim, source: 'Library'};
+    });
+    return best;
+  }
+
+  // ---------- Viewing scheduler (.ics export) ----------
+  function toDatetimeLocal(iso){
+    if (!iso) return '';
+    const d = new Date(iso);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  function triggerDownload(filename, content, mime){
+    const blob = new Blob([content], {type: mime});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+  function generateICS(entry){
+    const dt = new Date(entry.viewingAt);
+    const end = new Date(dt.getTime() + 45 * 60000);
+    const fmt = d => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const esc = s => (s || '').replace(/[\\,;]/g, m => '\\' + m).replace(/\n/g, '\\n');
+    const lines = [
+      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Brunssum Housing Tracker//EN', 'BEGIN:VEVENT',
+      `UID:${entry.id}@brunssum-housing-tracker`,
+      `DTSTAMP:${fmt(new Date())}`,
+      `DTSTART:${fmt(dt)}`,
+      `DTEND:${fmt(end)}`,
+      `SUMMARY:Housing viewing — ${esc(entry.address)}`,
+      `LOCATION:${esc(entry.address)}`
+    ];
+    if (entry.notes) lines.push(`DESCRIPTION:${esc(entry.notes)}`);
+    lines.push('END:VEVENT', 'END:VCALENDAR');
+    return lines.join('\r\n');
+  }
+  function downloadICS(entry){
+    if (!entry.viewingAt) return;
+    const safeName = (entry.address || 'viewing').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40);
+    triggerDownload(`viewing-${safeName}.ics`, generateICS(entry), 'text/calendar');
+  }
+
+  // ---------- Full data backup export ----------
+  exportBackupBtn.addEventListener('click', () => {
+    const backup = {
+      exportedAt: new Date().toISOString(),
+      latestSnapshot: lastCurrList,
+      watchlist: watchMap,
+      dossiers: dossierMap,
+      photos: photoMap,
+      priorityHomes: priorityHomes,
+      criteria: criteria,
+      history: historyMap,
+      ohaAllowance: ohaAllowance,
+      activityLog: activityLog,
+      scores: listingScores
+    };
+    triggerDownload(`brunssum-housing-backup-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify(backup, null, 2), 'application/json');
+    logActivity('exported a full data backup');
+  });
+
+  // ---------- Match scoring against Multiple Agreement criteria ----------
+  async function loadScores(){
+    return loadJSON(SCORES_KEY, {});
+  }
+  async function saveScoresToStore(){
+    return saveJSON(SCORES_KEY, listingScores);
+  }
+  function scoreFor(id){
+    const total = (criteria && criteria.multiple) ? criteria.multiple.length : 0;
+    if (!total) return null;
+    const checks = listingScores[id] || {};
+    const met = criteria.multiple.filter(c => checks[c]).length;
+    return {met, total};
+  }
+  function scoreBadgeHTML(id){
+    const s = scoreFor(id);
+    if (!s || !s.total) return '';
+    const cls = s.met === s.total ? 'full' : (s.met > 0 ? 'partial' : '');
+    return `<span class="score-badge ${cls}">${s.met}/${s.total} match</span>`;
+  }
+  function criteriaChecklistHTML(id){
+    if (!criteria || !criteria.multiple || !criteria.multiple.length) return '';
+    const checks = listingScores[id] || {};
+    return `<div class="criteria-check-list">${criteria.multiple.map(c => `
+      <label class="criteria-check-item ${checks[c] ? 'checked' : ''}">
+        <input type="checkbox" data-score-id="${escapeHTML(id)}" data-score-criterion="${escapeHTML(c)}" ${checks[c] ? 'checked' : ''}>
+        ${escapeHTML(c)}
+      </label>`).join('')}
+    </div>`;
+  }
+  async function toggleScoreCriterion(id, criterion){
+    if (!listingScores[id]) listingScores[id] = {};
+    listingScores[id][criterion] = !listingScores[id][criterion];
+    await saveScoresToStore();
+  }
+
+  // ---------- Side-by-side comparison ----------
+  function buildComparable(source, kind){
+    if (kind === 'dossier'){
+      return {
+        id: source.id, kind, address: source.city, type: source.type, beds: source.beds,
+        baths: [source.bathsFull, source.baths34, source.bathsHalf].filter(v => v).join('/') || '—',
+        sqm: source.sqm, rent: source.rentNum ? `€${source.rentNum.toLocaleString()}` : (source.rentRaw || '—'),
+        available: source.available, distance: '', score: scoreFor(source.id)
+      };
+    }
+    return {
+      id: source.id, kind, address: source.address, type: source.source || '', beds: '',
+      baths: '—', sqm: '', rent: source.price ? `€${Number(source.price).toLocaleString()}` : '—',
+      available: '', distance: '', score: null
+    };
+  }
+
+  function renderCompareBar(){
+    const n = compareSet.size;
+    compareBar.style.display = n ? 'flex' : 'none';
+    compareBarText.textContent = `${n} selected for comparison`;
+    compareViewBtn.disabled = n < 2;
+  }
+
+  function toggleCompare(id, source, kind){
+    if (compareSet.has(id)){
+      compareSet.delete(id);
+    } else {
+      if (compareSet.size >= 4){
+        compareBar.style.display = 'flex';
+        compareBarText.textContent = 'Compare up to 4 at a time — remove one before adding another.';
+        return;
+      }
+      compareSet.set(id, buildComparable(source, kind));
+    }
+    renderCompareBar();
+    renderDossiers();
+    renderPriorityHomes();
+  }
+
+  function buildCompareTable(){
+    const items = [...compareSet.values()];
+    const rows = [
+      ['Address', items.map(i => i.address || '—')],
+      ['Type', items.map(i => i.type || '—')],
+      ['Beds', items.map(i => i.beds || '—')],
+      ['Baths', items.map(i => i.baths || '—')],
+      ['sqm', items.map(i => i.sqm || '—')],
+      ['Rent', items.map(i => i.rent || '—')],
+      ['Available', items.map(i => i.available || '—')],
+      ['Match', items.map(i => i.score ? `${i.score.met}/${i.score.total}` : '—')]
+    ];
+    const header = `<tr><th></th>${items.map(i => `<th>${escapeHTML(i.address || i.id)}</th>`).join('')}</tr>`;
+    const body = rows.map(([label, vals]) => `<tr><th>${escapeHTML(label)}</th>${vals.map(v => `<td>${escapeHTML(String(v))}</td>`).join('')}</tr>`).join('');
+    return `<div style="overflow-x:auto;"><table>${header}${body}</table></div>`;
+  }
+
+  compareViewBtn.addEventListener('click', () => {
+    if (compareSet.size < 2) return;
+    compareTableWrap.innerHTML = buildCompareTable();
+    compareOverlay.style.display = 'flex';
+  });
+  compareCloseBtn.addEventListener('click', () => { compareOverlay.style.display = 'none'; });
+  compareClearBtn.addEventListener('click', () => {
+    compareSet.clear();
+    renderCompareBar();
+    renderDossiers();
+    renderPriorityHomes();
+  });
+
   async function init(){
     watchMap = await loadWatch();
     dossierMap = await loadDossiers();
     historyMap = await loadHistory();
     photoMap = await loadPhotos();
+    listingScores = await loadScores();
+    criteria = await loadCriteria();
+    if (criteria === null){
+      criteria = JSON.parse(JSON.stringify(SEED_CRITERIA));
+      await saveCriteria();
+    }
     const prev = await loadSnapshot();
     lastCurrList = prev ? prev.listings : null;
     if (prev && prev.listings){
@@ -2319,6 +2993,7 @@
     }
     renderDossiers();
     renderTrends();
+    renderCompareBar();
 
     priorityHomes = await loadPriorityHomes();
     if (priorityHomes === null){
@@ -2327,11 +3002,6 @@
     }
     renderPriorityHomes();
 
-    criteria = await loadCriteria();
-    if (criteria === null){
-      criteria = JSON.parse(JSON.stringify(SEED_CRITERIA));
-      await saveCriteria();
-    }
     renderCriteria();
 
     renderActorStamp();
