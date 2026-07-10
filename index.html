@@ -535,6 +535,15 @@
     border:1px dashed var(--border);
     flex-shrink:0;
   }
+  .photo-add-btn{
+    color:var(--ink-dim);
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.05em;
+    cursor:pointer;
+    transition:color 0.1s ease, border-color 0.1s ease;
+  }
+  .photo-add-btn:hover{color:var(--amber);border-color:var(--amber-dim);border-style:solid;}
   .dossier-head-row{display:flex;gap:16px;align-items:flex-start;}
   #photoDocxInput{
     font-family:'JetBrains Mono',monospace;
@@ -873,6 +882,7 @@
     </div>
 
     <div id="dossierWrap"></div>
+    <input type="file" id="dossierPhotoAttachInput" accept="image/*" style="display:none;">
 
     <div class="panel">
       <div class="panel-title">Dossier Intake</div>
@@ -1129,6 +1139,7 @@
   const saveDossiersBtn = document.getElementById('saveDossiersBtn');
   const dossierStatusMsg = document.getElementById('dossierStatusMsg');
   const dossierWrap = document.getElementById('dossierWrap');
+  const dossierPhotoAttachInput = document.getElementById('dossierPhotoAttachInput');
   const board = document.getElementById('board');
   const tabSitrepBtn = document.getElementById('tabSitrepBtn');
   const tabLibraryBtn = document.getElementById('tabLibraryBtn');
@@ -1238,6 +1249,7 @@
   let libraryFilters = {minRent:'', maxRent:'', minBeds:'', type:''};
   let compareSet = new Map(); // id -> comparable object
   let pvPendingDuplicate = null; // address string awaiting a second confirm click
+  let pendingPhotoTargetId = null; // dossier id awaiting a photo from the hidden file input
 
   function setStatus(msg){ statusMsg.textContent = msg; }
 
@@ -1799,7 +1811,7 @@
     if (src){
       return `<img class="photo-thumb-lg" src="${src}" data-photo-id="${escapeHTML(id)}" alt="">`;
     }
-    return `<div class="photo-placeholder-lg"></div>`;
+    return `<button class="photo-placeholder-lg photo-add-btn" data-photo-add-id="${escapeHTML(id)}" title="Add a photo">+ Photo</button>`;
   }
 
   function isInToView(dossierId){
@@ -1899,6 +1911,7 @@
   dossierWrap.addEventListener('click', (e) => {
     if (e.target.closest('.watch-btn')) return; // handled by board-level delegation
     if (e.target.closest('.photo-thumb-lg')) return; // handled by board-level lightbox
+    if (e.target.closest('.photo-add-btn')) return; // handled below
     if (e.target.closest('.compare-btn')) return; // handled below (covers both compare and to-view buttons)
     const head = e.target.closest('[data-toggle-id]');
     if (!head) return;
@@ -1916,6 +1929,30 @@
     const avbtn = e.target.closest('[data-addtoview-id]');
     if (avbtn && !avbtn.disabled){
       addDossierToView(avbtn.dataset.addtoviewId);
+      return;
+    }
+    const photoAddBtn = e.target.closest('[data-photo-add-id]');
+    if (photoAddBtn){
+      pendingPhotoTargetId = photoAddBtn.dataset.photoAddId;
+      dossierPhotoAttachInput.click();
+    }
+  });
+
+  dossierPhotoAttachInput.addEventListener('change', async () => {
+    const file = dossierPhotoAttachInput.files[0];
+    const targetId = pendingPhotoTargetId;
+    dossierPhotoAttachInput.value = '';
+    pendingPhotoTargetId = null;
+    if (!file || !targetId) return;
+    try{
+      const dataUrl = await readFileAsDataURL(file);
+      photoMap[targetId] = dataUrl;
+      await savePhotosToStore(photoMap);
+      renderDossiers();
+      const rec = dossierMap[targetId];
+      logActivity(`added a photo to "${rec ? rec.city : targetId}"`);
+    } catch(err){
+      dossierStatusMsg.textContent = `Could not read that image: ${err.message}`;
     }
   });
 
