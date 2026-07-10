@@ -854,16 +854,6 @@
     </div>
 
     <div id="librarySection" style="display:none;">
-    <div class="panel">
-      <div class="panel-title">Dossier Intake</div>
-      <div class="status-msg" style="margin-bottom:10px;">Paste full detail pages (the expanded listing view with contact info, property details, costs). Multiple listings in one paste are fine. German listings are skipped automatically.</div>
-      <textarea id="dossierArea" placeholder="Paste one or more full Homes.mil detail pages here..."></textarea>
-      <div class="row">
-        <button id="saveDossiersBtn">Save Dossiers</button>
-        <span class="status-msg" id="dossierStatusMsg"></span>
-      </div>
-    </div>
-
     <div class="panel" id="librarySearchPanel" style="display:none;">
       <input type="text" id="librarySearch" placeholder="Filter by city, type, or listing ID...">
       <div class="filter-bar">
@@ -879,6 +869,18 @@
         </select>
         <button class="ghost" id="libFilterClearBtn">Clear Filters</button>
         <button class="ghost" id="libSortToggleBtn">Sort: Rent</button>
+      </div>
+    </div>
+
+    <div id="dossierWrap"></div>
+
+    <div class="panel">
+      <div class="panel-title">Dossier Intake</div>
+      <div class="status-msg" style="margin-bottom:10px;">Paste full detail pages (the expanded listing view with contact info, property details, costs). Multiple listings in one paste are fine. German listings are skipped automatically.</div>
+      <textarea id="dossierArea" placeholder="Paste one or more full Homes.mil detail pages here..."></textarea>
+      <div class="row">
+        <button id="saveDossiersBtn">Save Dossiers</button>
+        <span class="status-msg" id="dossierStatusMsg"></span>
       </div>
     </div>
 
@@ -915,8 +917,6 @@
       </div>
       <div id="dutchReviewWrap"></div>
     </div>
-
-    <div id="dossierWrap"></div>
     </div>
 
     <div id="trendsSection" style="display:none;">
@@ -2397,15 +2397,61 @@
   });
 
   // ---------- Pararius / Funda import ----------
+  // Handles both Dutch source text and browser-auto-translated English text,
+  // since Chrome/Google Translate commonly rewrites these pages before a
+  // person copies them.
   const PARARIUS_STOPS = new Set([
     'Meer info', 'Overdracht', 'Interieur', 'Oppervlakte en inhoud', 'Bouw', 'Indeling',
-    'Voorzieningen', 'Buitenruimte', 'Energie', 'Beschrijving', 'Minder', 'Omschrijving'
+    'Voorzieningen', 'Buitenruimte', 'Energie', 'Beschrijving', 'Minder', 'Omschrijving',
+    'More info', 'Transfer', 'Interior', 'Surface area and volume', 'Build', 'Layout',
+    'Amenities', 'Outdoor space', 'Energy', 'Description', 'Fewer', 'Less'
   ]);
 
-  function parseDutchNumber(str){
+  const PARARIUS_LABELS = {
+    type: ['Type woning', 'Type of home'],
+    available: ['Beschikbaar', 'Available'],
+    deposit: ['Borg', 'Deposit'],
+    beds: ['Aantal slaapkamers', 'Number of bedrooms'],
+    baths: ['Aantal badkamers', 'Number of bathrooms'],
+    sqmLabel: ['Woonoppervlakte', 'Living area'],
+    yearBuilt: ['Bouwjaar', 'Year of construction'],
+    leaseTerm: ['Huurperiode', 'Rental period'],
+    garden: ['Tuin', 'Garden'],
+    balcony: ['Balkon', 'Balcony'],
+    roofTerrace: ['Dakterras', 'Roof terrace'],
+    energyLabel: ['Energielabel', 'Energy label'],
+    heating: ['Verwarming', 'Heating'],
+    parking: ['Parkeergelegenheid', 'Parking'],
+    condition: ['Onderhoudsstaat', 'Maintenance condition']
+  };
+
+  function valueAfterAnyLabel(lines, labels, stopWords){
+    for (const label of labels){
+      const v = valueAfterLabel(lines, label, stopWords);
+      if (v) return v;
+    }
+    return '';
+  }
+
+  // Detects Dutch (2.750 = two thousand) vs English (2,750 = two thousand)
+  // thousands-separator conventions rather than assuming one.
+  function parseFlexibleNumber(str){
     if (!str) return null;
-    const cleaned = String(str).replace(/[€\s]/g, '').replace(/\./g, '').replace(',', '.');
-    const n = parseFloat(cleaned);
+    let s = String(str).replace(/[€\s]/g, '');
+    const lastComma = s.lastIndexOf(',');
+    const lastDot = s.lastIndexOf('.');
+    if (lastComma > -1 && lastDot > -1){
+      if (lastComma > lastDot){ s = s.replace(/\./g, '').replace(',', '.'); }
+      else { s = s.replace(/,/g, ''); }
+    } else if (lastComma > -1){
+      const afterComma = s.length - lastComma - 1;
+      if (afterComma === 3 && /^\d{1,3}(,\d{3})+$/.test(s)){ s = s.replace(/,/g, ''); }
+      else { s = s.replace(',', '.'); }
+    } else if (lastDot > -1){
+      const afterDot = s.length - lastDot - 1;
+      if (afterDot === 3 && /^\d{1,3}(\.\d{3})+$/.test(s)){ s = s.replace(/\./g, ''); }
+    }
+    const n = parseFloat(s);
     return isNaN(n) ? null : Math.round(n);
   }
 
@@ -2413,53 +2459,53 @@
     const lines = raw.split('\n').map(l => l.trim());
     const nonEmpty = lines.filter(Boolean);
 
-    const titleMatch = raw.match(/^Te (huur|koop):\s*(.+)$/mi);
-    const title = titleMatch ? titleMatch[2].trim() : '';
+    const titleMatch = raw.match(/^(?:Te (?:huur|koop)|For (?:rent|sale)):\s*(.+)$/mi);
+    const title = titleMatch ? titleMatch[1].trim() : '';
 
     const postalMatch = raw.match(/^(\d{4}\s?[A-Z]{2})\s*\(([^)]+)\)/m);
     const postal = postalMatch ? postalMatch[1] : '';
     const neighborhood = postalMatch ? postalMatch[2] : '';
 
-    const rentMatch = raw.match(/€\s*([\d.,]+)\s*per maand/i);
+    const rentMatch = raw.match(/€\s*([\d.,]+)\s*per (?:maand|month)/i);
     const rentRaw = rentMatch ? rentMatch[1] : '';
 
     const sqmMatch = raw.match(/(\d+)\s*m²/);
     const sqm = sqmMatch ? sqmMatch[1] : '';
 
-    const furnishMatch = raw.match(/^(Gestoffeerd|Gemeubileerd|Kaal)$/mi);
+    const furnishMatch = raw.match(/^(Gestoffeerd|Gemeubileerd|Kaal|Upholstered|Furnished|Unfurnished|Bare)$/mi);
     const furnished = furnishMatch ? furnishMatch[1] : '';
 
-    const descStart = lines.findIndex(l => l === 'Beschrijving');
-    const descEnd = lines.findIndex((l, i) => i > descStart && l === 'Minder');
+    const descStart = lines.findIndex(l => l === 'Beschrijving' || l === 'Description');
+    const descEnd = lines.findIndex((l, i) => i > descStart && (l === 'Minder' || l === 'Fewer' || l === 'Less'));
     let description = '';
     if (descStart >= 0){
       const end = descEnd > descStart ? descEnd : Math.min(descStart + 40, lines.length);
       description = lines.slice(descStart + 1, end).filter(Boolean).join(' ');
     }
-    const petsMatch = description.match(/Huisdieren[^.]*\./i);
+    const petsMatch = description.match(/(?:Huisdieren|Pets)[^.]*\./i);
 
     return {
       city: [title, postal, neighborhood ? `(${neighborhood})` : ''].filter(Boolean).join(' — '),
-      type: valueAfterLabel(nonEmpty, 'Type woning', PARARIUS_STOPS),
-      subtype: valueAfterLabel(nonEmpty, 'Soort woning', PARARIUS_STOPS),
-      available: valueAfterLabel(nonEmpty, 'Beschikbaar', PARARIUS_STOPS),
+      type: valueAfterAnyLabel(nonEmpty, PARARIUS_LABELS.type, PARARIUS_STOPS),
+      available: valueAfterAnyLabel(nonEmpty, PARARIUS_LABELS.available, PARARIUS_STOPS),
       rent: rentRaw,
-      deposit: (valueAfterLabel(nonEmpty, 'Borg', PARARIUS_STOPS) || '').replace(/[€\s]/g, ''),
-      beds: valueAfterLabel(nonEmpty, 'Aantal slaapkamers', PARARIUS_STOPS),
-      baths: valueAfterLabel(nonEmpty, 'Aantal badkamers', PARARIUS_STOPS),
-      sqm: sqm || valueAfterLabel(nonEmpty, 'Woonoppervlakte', PARARIUS_STOPS).replace(/\s*m²/, ''),
+      deposit: valueAfterAnyLabel(nonEmpty, PARARIUS_LABELS.deposit, PARARIUS_STOPS).replace(/[€\s]/g, ''),
+      beds: valueAfterAnyLabel(nonEmpty, PARARIUS_LABELS.beds, PARARIUS_STOPS),
+      baths: valueAfterAnyLabel(nonEmpty, PARARIUS_LABELS.baths, PARARIUS_STOPS),
+      sqm: sqm || valueAfterAnyLabel(nonEmpty, PARARIUS_LABELS.sqmLabel, PARARIUS_STOPS).replace(/\s*m²/, ''),
       furnished: furnished,
-      yearBuilt: valueAfterLabel(nonEmpty, 'Bouwjaar', PARARIUS_STOPS),
-      leaseTerm: valueAfterLabel(nonEmpty, 'Huurperiode', PARARIUS_STOPS),
+      yearBuilt: valueAfterAnyLabel(nonEmpty, PARARIUS_LABELS.yearBuilt, PARARIUS_STOPS),
+      leaseTerm: valueAfterAnyLabel(nonEmpty, PARARIUS_LABELS.leaseTerm, PARARIUS_STOPS),
       pets: petsMatch ? petsMatch[0] : '',
-      garden: valueAfterLabel(nonEmpty, 'Tuin', PARARIUS_STOPS),
-      balcony: valueAfterLabel(nonEmpty, 'Balkon', PARARIUS_STOPS),
-      roofTerrace: valueAfterLabel(nonEmpty, 'Dakterras', PARARIUS_STOPS),
-      energyLabel: valueAfterLabel(nonEmpty, 'Energielabel', PARARIUS_STOPS),
-      heating: valueAfterLabel(nonEmpty, 'Verwarming', PARARIUS_STOPS),
-      parking: valueAfterLabel(nonEmpty, 'Parkeergelegenheid', PARARIUS_STOPS),
-      condition: valueAfterLabel(nonEmpty, 'Onderhoudsstaat', PARARIUS_STOPS),
-      description: description
+      garden: valueAfterAnyLabel(nonEmpty, PARARIUS_LABELS.garden, PARARIUS_STOPS),
+      balcony: valueAfterAnyLabel(nonEmpty, PARARIUS_LABELS.balcony, PARARIUS_STOPS),
+      roofTerrace: valueAfterAnyLabel(nonEmpty, PARARIUS_LABELS.roofTerrace, PARARIUS_STOPS),
+      energyLabel: valueAfterAnyLabel(nonEmpty, PARARIUS_LABELS.energyLabel, PARARIUS_STOPS),
+      heating: valueAfterAnyLabel(nonEmpty, PARARIUS_LABELS.heating, PARARIUS_STOPS),
+      parking: valueAfterAnyLabel(nonEmpty, PARARIUS_LABELS.parking, PARARIUS_STOPS),
+      condition: valueAfterAnyLabel(nonEmpty, PARARIUS_LABELS.condition, PARARIUS_STOPS),
+      description: description,
+      subtype: valueAfterLabel(nonEmpty, 'Soort woning', PARARIUS_STOPS)
     };
   }
 
@@ -2533,8 +2579,8 @@
       });
       if (sourceUrl) amenitiesParts.push(`Source: ${sourceUrl}`);
 
-      const rentNum = parseDutchNumber(collected.rent);
-      const depositNum = parseDutchNumber(collected.deposit);
+      const rentNum = parseFlexibleNumber(collected.rent);
+      const depositNum = parseFlexibleNumber(collected.deposit);
 
       dossierMap[id] = {
         id,
