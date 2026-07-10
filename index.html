@@ -1802,9 +1802,14 @@
     return `<div class="photo-placeholder-lg"></div>`;
   }
 
+  function isInToView(dossierId){
+    return (priorityHomes || []).some(p => p.listingId === dossierId);
+  }
+
   function dossierCardHTML(rec){
     const watched = !!watchMap[rec.id];
     const comparing = compareSet.has(rec.id);
+    const inToView = isInToView(rec.id);
     const bathParts = [rec.bathsFull, rec.baths34, rec.bathsHalf].filter(v => v !== '');
     const bathSummary = bathParts.length ? `${bathParts[0]||0}F/${bathParts[1]||0}3Q/${bathParts[2]||0}H bath` : '';
     const scoreBadge = scoreBadgeHTML(rec.id);
@@ -1830,6 +1835,7 @@
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
           <div class="dossier-rent ${isOverBudget(rec.rentNum) ? 'over-budget' : ''}">€${rec.rentNum ? rec.rentNum.toLocaleString() : escapeHTML(rec.rentRaw)}</div>
           <button class="compare-btn ${comparing ? 'active' : ''}" data-compare-id="${escapeHTML(rec.id)}">${comparing ? '✓ Comparing' : '+ Compare'}</button>
+          <button class="compare-btn ${inToView ? 'active' : ''}" data-addtoview-id="${escapeHTML(rec.id)}" ${inToView ? 'disabled' : ''} title="${inToView ? 'Already on your To View list' : 'Add to your To View list'}">${inToView ? '✓ In To View' : '+ To View'}</button>
         </div>
         </div>
       </div>
@@ -1893,7 +1899,7 @@
   dossierWrap.addEventListener('click', (e) => {
     if (e.target.closest('.watch-btn')) return; // handled by board-level delegation
     if (e.target.closest('.photo-thumb-lg')) return; // handled by board-level lightbox
-    if (e.target.closest('.compare-btn')) return; // handled below
+    if (e.target.closest('.compare-btn')) return; // handled below (covers both compare and to-view buttons)
     const head = e.target.closest('[data-toggle-id]');
     if (!head) return;
     const body = document.getElementById(`dossier-body-${head.dataset.toggleId}`);
@@ -1901,11 +1907,36 @@
   });
 
   dossierWrap.addEventListener('click', (e) => {
-    const cbtn = e.target.closest('.compare-btn');
-    if (!cbtn) return;
-    const id = cbtn.dataset.compareId;
-    toggleCompare(id, dossierMap[id], 'dossier');
+    const cbtn = e.target.closest('[data-compare-id]');
+    if (cbtn){
+      const id = cbtn.dataset.compareId;
+      toggleCompare(id, dossierMap[id], 'dossier');
+      return;
+    }
+    const avbtn = e.target.closest('[data-addtoview-id]');
+    if (avbtn && !avbtn.disabled){
+      addDossierToView(avbtn.dataset.addtoviewId);
+    }
   });
+
+  async function addDossierToView(dossierId){
+    const rec = dossierMap[dossierId];
+    if (!rec || isInToView(dossierId)) return;
+    priorityHomes.push({
+      id: makeId(),
+      address: rec.city,
+      price: rec.rentNum || null,
+      source: 'Library',
+      note: '',
+      link: rec.sourceUrl || '',
+      listingId: rec.id,
+      status: 'to-view'
+    });
+    await savePriorityHomes();
+    renderDossiers();
+    renderPriorityHomes();
+    logActivity(`added "${rec.city}" to To View from the Library`);
+  }
 
   dossierWrap.addEventListener('change', (e) => {
     const cb = e.target.closest('[data-score-criterion]');
@@ -3265,6 +3296,11 @@
       criteria = JSON.parse(JSON.stringify(SEED_CRITERIA));
       await saveCriteria();
     }
+    priorityHomes = await loadPriorityHomes();
+    if (priorityHomes === null){
+      priorityHomes = SEED_PRIORITY_HOMES.map(h => ({...h, id: makeId()}));
+      await savePriorityHomes();
+    }
     const prev = await loadSnapshot();
     lastCurrList = prev ? prev.listings : null;
     if (prev && prev.listings){
@@ -3277,12 +3313,6 @@
     renderDossiers();
     renderTrends();
     renderCompareBar();
-
-    priorityHomes = await loadPriorityHomes();
-    if (priorityHomes === null){
-      priorityHomes = SEED_PRIORITY_HOMES.map(h => ({...h, id: makeId()}));
-      await savePriorityHomes();
-    }
     renderPriorityHomes();
 
     renderCriteria();
