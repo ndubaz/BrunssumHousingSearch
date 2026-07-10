@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Brunssum Housing SITREP</title>
+<title>Brunssum Housing Ops</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Big+Shoulders+Condensed:wght@600;700;800&display=swap">
 <style>
   :root{
@@ -791,7 +791,7 @@
 <div class="board" id="board">
   <div class="masthead">
     <div class="eyebrow">SETAF-AF // JFC BRUNSSUM RELOCATION</div>
-    <h1>HOUSING <span>SITREP</span></h1>
+    <h1>HOUSING <span>OPS</span></h1>
     <div class="sub" id="baselineInfo">No baseline on file. Paste today's Homes.mil export below to establish one.</div>
     <div class="stampline" id="tallyStamps"></div>
     <div class="tabnav">
@@ -899,6 +899,21 @@
         <span class="status-msg" id="screenshotStatusMsg"></span>
       </div>
       <div id="screenshotReviewWrap"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Pararius / Funda Import</div>
+      <div class="status-msg" style="margin-bottom:10px;">Paste a listing link (fetched server-side once deployed — this won't work in the Claude preview) or paste the listing text directly. Review before saving either way.</div>
+      <div class="row">
+        <input type="text" id="dutchUrlInput" placeholder="https://www.pararius.nl/... or https://www.funda.nl/..." style="flex:2;min-width:220px;">
+        <button id="dutchFetchBtn">Fetch from Link</button>
+      </div>
+      <textarea id="dutchListingArea" placeholder="...or paste the full listing text here" style="margin-top:10px;"></textarea>
+      <div class="row">
+        <button id="dutchParseBtn">Parse Pasted Text</button>
+        <span class="status-msg" id="dutchStatusMsg"></span>
+      </div>
+      <div id="dutchReviewWrap"></div>
     </div>
 
     <div id="dossierWrap"></div>
@@ -1131,6 +1146,12 @@
   const screenshotInput = document.getElementById('screenshotInput');
   const screenshotStatusMsg = document.getElementById('screenshotStatusMsg');
   const screenshotReviewWrap = document.getElementById('screenshotReviewWrap');
+  const dutchUrlInput = document.getElementById('dutchUrlInput');
+  const dutchFetchBtn = document.getElementById('dutchFetchBtn');
+  const dutchListingArea = document.getElementById('dutchListingArea');
+  const dutchParseBtn = document.getElementById('dutchParseBtn');
+  const dutchStatusMsg = document.getElementById('dutchStatusMsg');
+  const dutchReviewWrap = document.getElementById('dutchReviewWrap');
   const tabToViewBtn = document.getElementById('tabToViewBtn');
   const tabCriteriaBtn = document.getElementById('tabCriteriaBtn');
   const toViewSection = document.getElementById('toViewSection');
@@ -1646,13 +1667,14 @@
     'Contact Information','Other Features','Skip to End'
   ]);
 
-  function valueAfterLabel(lines, label){
+  function valueAfterLabel(lines, label, stopWords){
+    const stops = stopWords || SECTION_HEADERS;
     const idx = lines.findIndex(l => l === label);
     if (idx < 0) return '';
     for (let i = idx + 1; i < lines.length; i++){
       const l = lines[i];
       if (l === '') continue;
-      if (l.endsWith(':') || SECTION_HEADERS.has(l)) return '';
+      if (l.endsWith(':') || stops.has(l)) return '';
       return l;
     }
     return '';
@@ -1824,6 +1846,7 @@
         </div>
         ${rec.description ? `<div class="desc">${escapeHTML(rec.description)}</div>` : ''}
         ${rec.amenitiesText ? `<div class="amenities">${escapeHTML(rec.amenitiesText)}</div>` : ''}
+        ${rec.sourceUrl ? `<div style="margin-top:8px;"><a href="${escapeHTML(rec.sourceUrl)}" target="_blank" rel="noopener" style="color:var(--olive);font-size:11px;">View Original Listing ↗</a></div>` : ''}
         ${criteriaChecklistHTML(rec.id)}
       </div>
     </div>`;
@@ -2371,6 +2394,220 @@
       screenshotStatusMsg.textContent = `Could not read that image: ${err.message}`;
     }
     screenshotInput.value = '';
+  });
+
+  // ---------- Pararius / Funda import ----------
+  const PARARIUS_STOPS = new Set([
+    'Meer info', 'Overdracht', 'Interieur', 'Oppervlakte en inhoud', 'Bouw', 'Indeling',
+    'Voorzieningen', 'Buitenruimte', 'Energie', 'Beschrijving', 'Minder', 'Omschrijving'
+  ]);
+
+  function parseDutchNumber(str){
+    if (!str) return null;
+    const cleaned = String(str).replace(/[€\s]/g, '').replace(/\./g, '').replace(',', '.');
+    const n = parseFloat(cleaned);
+    return isNaN(n) ? null : Math.round(n);
+  }
+
+  function parseDutchListing(raw){
+    const lines = raw.split('\n').map(l => l.trim());
+    const nonEmpty = lines.filter(Boolean);
+
+    const titleMatch = raw.match(/^Te (huur|koop):\s*(.+)$/mi);
+    const title = titleMatch ? titleMatch[2].trim() : '';
+
+    const postalMatch = raw.match(/^(\d{4}\s?[A-Z]{2})\s*\(([^)]+)\)/m);
+    const postal = postalMatch ? postalMatch[1] : '';
+    const neighborhood = postalMatch ? postalMatch[2] : '';
+
+    const rentMatch = raw.match(/€\s*([\d.,]+)\s*per maand/i);
+    const rentRaw = rentMatch ? rentMatch[1] : '';
+
+    const sqmMatch = raw.match(/(\d+)\s*m²/);
+    const sqm = sqmMatch ? sqmMatch[1] : '';
+
+    const furnishMatch = raw.match(/^(Gestoffeerd|Gemeubileerd|Kaal)$/mi);
+    const furnished = furnishMatch ? furnishMatch[1] : '';
+
+    const descStart = lines.findIndex(l => l === 'Beschrijving');
+    const descEnd = lines.findIndex((l, i) => i > descStart && l === 'Minder');
+    let description = '';
+    if (descStart >= 0){
+      const end = descEnd > descStart ? descEnd : Math.min(descStart + 40, lines.length);
+      description = lines.slice(descStart + 1, end).filter(Boolean).join(' ');
+    }
+    const petsMatch = description.match(/Huisdieren[^.]*\./i);
+
+    return {
+      city: [title, postal, neighborhood ? `(${neighborhood})` : ''].filter(Boolean).join(' — '),
+      type: valueAfterLabel(nonEmpty, 'Type woning', PARARIUS_STOPS),
+      subtype: valueAfterLabel(nonEmpty, 'Soort woning', PARARIUS_STOPS),
+      available: valueAfterLabel(nonEmpty, 'Beschikbaar', PARARIUS_STOPS),
+      rent: rentRaw,
+      deposit: (valueAfterLabel(nonEmpty, 'Borg', PARARIUS_STOPS) || '').replace(/[€\s]/g, ''),
+      beds: valueAfterLabel(nonEmpty, 'Aantal slaapkamers', PARARIUS_STOPS),
+      baths: valueAfterLabel(nonEmpty, 'Aantal badkamers', PARARIUS_STOPS),
+      sqm: sqm || valueAfterLabel(nonEmpty, 'Woonoppervlakte', PARARIUS_STOPS).replace(/\s*m²/, ''),
+      furnished: furnished,
+      yearBuilt: valueAfterLabel(nonEmpty, 'Bouwjaar', PARARIUS_STOPS),
+      leaseTerm: valueAfterLabel(nonEmpty, 'Huurperiode', PARARIUS_STOPS),
+      pets: petsMatch ? petsMatch[0] : '',
+      garden: valueAfterLabel(nonEmpty, 'Tuin', PARARIUS_STOPS),
+      balcony: valueAfterLabel(nonEmpty, 'Balkon', PARARIUS_STOPS),
+      roofTerrace: valueAfterLabel(nonEmpty, 'Dakterras', PARARIUS_STOPS),
+      energyLabel: valueAfterLabel(nonEmpty, 'Energielabel', PARARIUS_STOPS),
+      heating: valueAfterLabel(nonEmpty, 'Verwarming', PARARIUS_STOPS),
+      parking: valueAfterLabel(nonEmpty, 'Parkeergelegenheid', PARARIUS_STOPS),
+      condition: valueAfterLabel(nonEmpty, 'Onderhoudsstaat', PARARIUS_STOPS),
+      description: description
+    };
+  }
+
+  const DUTCH_FIELDS = [
+    {key: 'city', label: 'Location / Address', required: true},
+    {key: 'type', label: 'Type'},
+    {key: 'subtype', label: 'Subtype'},
+    {key: 'beds', label: 'Bedrooms'},
+    {key: 'baths', label: 'Bathrooms'},
+    {key: 'sqm', label: 'm²'},
+    {key: 'available', label: 'Available'},
+    {key: 'rent', label: 'Rent €'},
+    {key: 'deposit', label: 'Deposit €'},
+    {key: 'furnished', label: 'Furnish Status'},
+    {key: 'yearBuilt', label: 'Year Built'},
+    {key: 'leaseTerm', label: 'Lease Term'},
+    {key: 'pets', label: 'Pets'},
+    {key: 'garden', label: 'Garden'},
+    {key: 'balcony', label: 'Balcony'},
+    {key: 'roofTerrace', label: 'Roof Terrace'},
+    {key: 'energyLabel', label: 'Energy Label'},
+    {key: 'heating', label: 'Heating'},
+    {key: 'parking', label: 'Parking'},
+    {key: 'condition', label: 'Condition'}
+  ];
+
+  function renderDutchReview(fields, rawText, sourceUrl){
+    const fieldInputsHTML = DUTCH_FIELDS.map(f => `
+      <div>
+        <label>${escapeHTML(f.label)}${f.required ? ' *' : ''}</label>
+        <input type="text" id="dr-${f.key}" value="${escapeHTML(fields[f.key] || '')}" placeholder="${f.required ? 'Required' : ''}">
+      </div>`).join('');
+    dutchReviewWrap.innerHTML = `<div class="review-card">
+      <div class="status-msg">Review before saving — labeled fields parse reliably, but check the description and anything unusual.</div>
+      <div class="review-fieldgrid" style="margin-top:10px;">${fieldInputsHTML}</div>
+      <div>
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-dim);margin-bottom:3px;">Description</label>
+        <textarea id="dr-description" style="width:100%;min-height:80px;">${escapeHTML(fields.description || '')}</textarea>
+      </div>
+      <details class="review-raw">
+        <summary>Raw source text (for cross-checking)</summary>
+        <pre>${escapeHTML(rawText)}</pre>
+      </details>
+      <div class="row">
+        <button id="dutchSaveBtn">Save to Library</button>
+        <button class="ghost" id="dutchDiscardBtn">Discard</button>
+      </div>
+    </div>`;
+
+    document.getElementById('dutchDiscardBtn').addEventListener('click', () => {
+      dutchReviewWrap.innerHTML = '';
+      dutchStatusMsg.textContent = '';
+    });
+
+    document.getElementById('dutchSaveBtn').addEventListener('click', async () => {
+      const collected = {};
+      DUTCH_FIELDS.forEach(f => { collected[f.key] = document.getElementById(`dr-${f.key}`).value.trim(); });
+      collected.description = document.getElementById('dr-description').value.trim();
+      if (!collected.city){
+        dutchStatusMsg.textContent = 'Location / Address is required before saving.';
+        return;
+      }
+
+      const id = 'nl' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const amenitiesParts = [];
+      ['garden','balcony','roofTerrace','energyLabel','heating','parking','condition','subtype'].forEach(k => {
+        if (collected[k]){
+          const label = DUTCH_FIELDS.find(f => f.key === k).label;
+          amenitiesParts.push(`${label}: ${collected[k]}`);
+        }
+      });
+      if (sourceUrl) amenitiesParts.push(`Source: ${sourceUrl}`);
+
+      const rentNum = parseDutchNumber(collected.rent);
+      const depositNum = parseDutchNumber(collected.deposit);
+
+      dossierMap[id] = {
+        id,
+        city: collected.city,
+        type: collected.type,
+        available: collected.available,
+        rentRaw: rentNum !== null ? String(rentNum) : collected.rent,
+        rentNum,
+        depositRaw: depositNum !== null ? String(depositNum) : collected.deposit,
+        beds: collected.beds,
+        bathsFull: collected.baths, baths34: '', bathsHalf: '',
+        sqft: '', sqm: collected.sqm,
+        furnished: collected.furnished, yearBuilt: collected.yearBuilt,
+        pets: collected.pets, smoking: '', leaseTerm: collected.leaseTerm, scra: '', inspection: '',
+        description: collected.description,
+        amenitiesText: amenitiesParts.join(' • '),
+        sourceUrl: sourceUrl || '',
+        savedAt: new Date().toISOString()
+      };
+
+      await saveDossiersToStore(dossierMap);
+      renderDossiers();
+      setActiveTab('library');
+      dutchReviewWrap.innerHTML = '';
+      dutchStatusMsg.textContent = `Saved "${collected.city}" to the library.`;
+      logActivity(`added "${collected.city}" from ${sourceUrl ? 'a Pararius/Funda link' : 'pasted listing text'}`);
+    });
+  }
+
+  dutchParseBtn.addEventListener('click', () => {
+    const raw = dutchListingArea.value;
+    if (!raw.trim()){
+      dutchStatusMsg.textContent = 'Paste the listing text first.';
+      return;
+    }
+    const fields = parseDutchListing(raw);
+    if (!fields.city && !fields.rent){
+      dutchStatusMsg.textContent = "Couldn't recognize this as a listing — check the format and try again, or fill in fields manually below.";
+    } else {
+      dutchStatusMsg.textContent = 'Parsed. Review the fields below before saving.';
+    }
+    renderDutchReview(fields, raw, '');
+  });
+
+  dutchFetchBtn.addEventListener('click', async () => {
+    const url = dutchUrlInput.value.trim();
+    if (!url){
+      dutchStatusMsg.textContent = 'Paste a Pararius or Funda link first.';
+      return;
+    }
+    dutchStatusMsg.textContent = 'Fetching...';
+    try{
+      const res = await fetch('/api/fetch-listing?url=' + encodeURIComponent(url), {credentials: 'include'});
+      if (res.status === 404){
+        dutchStatusMsg.textContent = "Link fetching only works on the deployed site, not this preview. Paste the listing text below instead.";
+        return;
+      }
+      if (!res.ok){
+        const err = await res.json().catch(() => ({}));
+        dutchStatusMsg.textContent = `Could not fetch that link${err.error ? ': ' + err.error : ''}. Try pasting the listing text instead.`;
+        return;
+      }
+      const data = await res.json();
+      const fields = parseDutchListing(data.text || '');
+      if (!fields.city && !fields.rent){
+        dutchStatusMsg.textContent = "Fetched the page but couldn't recognize listing fields — the site may have blocked automated access. Try pasting the text instead.";
+      } else {
+        dutchStatusMsg.textContent = 'Fetched and parsed. Review the fields below before saving.';
+      }
+      renderDutchReview(fields, data.text || '', url);
+    } catch(err){
+      dutchStatusMsg.textContent = 'Could not reach the fetch service. Paste the listing text below instead.';
+    }
   });
 
   // ---------- Priority homes (To View list) ----------

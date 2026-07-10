@@ -1,8 +1,10 @@
-# Brunssum Housing Tracker
+# Brunssum Housing Ops
 
-A live, shared version of the housing SITREP tracker. Same tool you've been using
-in Claude, now running as a real website you and Anne can both open on a phone
-or a computer, with data stored in a small cloud database instead of
+A live, shared version of the housing tracker — SITREP diffing, dossier
+library, trends, viewing scheduler, family priorities, and an activity log.
+Same tool you've been using in Claude, now running as a real website you and
+Anne can both open on a phone or a computer, with data stored in a small
+cloud database instead of
 Claude-only storage.
 
 ## What's in this package
@@ -12,6 +14,9 @@ index.html        The entire tracker (UI, parsers, charts) — unchanged from Cl
                    just pointed at a real backend instead of Claude's storage.
 api/storage.js     Serverless function: get/set/delete/list, backed by Redis.
 api/login.js       Serverless function: checks the shared password, sets a cookie.
+api/fetch-listing.js  Serverless function: fetches a Pararius/Funda link server-side
+                   (avoids browser CORS) so it can be parsed into a dossier entry.
+                   Restricted to pararius.nl and funda.nl only.
 package.json       One dependency (@upstash/redis).
 .env.example       Template for the environment variables you'll set in Vercel.
 ```
@@ -110,6 +115,20 @@ You'll get a URL like `brunssum-tracker.vercel.app`. Open it, enter the
 - If you ever want stronger protection, Vercel's paid plans include built-in
   password/SSO protection at the platform level — this DIY version exists
   because that feature isn't on the free tier.
+
+## Pararius / Funda link fetching
+
+The Library tab can fetch a Pararius or Funda listing directly from a URL,
+server-side, so it isn't subject to browser CORS restrictions. Two honest
+caveats:
+
+- **This only works once deployed.** In a Claude.ai preview of this file
+  there's no server behind it, so the "Fetch from Link" button will tell you
+  to paste the text instead — that's expected, not a bug.
+- **Some listings may still get blocked.** Real estate sites sometimes run
+  bot protection (Cloudflare, Datadome) that can reject even a well-behaved
+  server-side fetch. If a link fails, pasting the listing's visible text
+  into the same panel always works — it runs through the identical parser.
 
 ## Storage limits worth knowing
 
