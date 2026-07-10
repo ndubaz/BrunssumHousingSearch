@@ -2744,6 +2744,47 @@
     return 'pv' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   }
 
+  // ---------- Library/To View reconciliation ----------
+  // Ensures every To View entry has a backing Library dossier. Entries added
+  // manually (no Listing ID typed in) or seeded as plain text don't have one
+  // by default; this creates a minimal dossier and links it so nothing on
+  // the To View list is ever an orphan — every entry gets scoring, photo
+  // attachment, and proper comparison data once linked.
+  function ensureDossierLink(entry){
+    if (entry.listingId && dossierMap[entry.listingId]) return false;
+    const id = 'tv' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    dossierMap[id] = {
+      id,
+      city: entry.address,
+      type: '',
+      available: '',
+      rentRaw: entry.price ? String(entry.price) : '',
+      rentNum: entry.price || null,
+      depositRaw: '',
+      beds: '', bathsFull: '', baths34: '', bathsHalf: '',
+      sqft: '', sqm: '',
+      furnished: '', yearBuilt: '', pets: '', smoking: '', leaseTerm: '', scra: '', inspection: '',
+      description: '',
+      amenitiesText: entry.note || '',
+      sourceUrl: entry.link || '',
+      savedAt: new Date().toISOString()
+    };
+    entry.listingId = id;
+    return true;
+  }
+
+  async function reconcilePriorityHomes(){
+    let changed = false;
+    (priorityHomes || []).forEach(entry => {
+      if (ensureDossierLink(entry)) changed = true;
+    });
+    if (changed){
+      await saveDossiersToStore(dossierMap);
+      await savePriorityHomes();
+    }
+    return changed;
+  }
+
   async function loadPriorityHomes(){
     return loadJSON(PRIORITY_KEY, null);
   }
@@ -2861,8 +2902,11 @@
         entry.notes = row.querySelector('.pv-e-notes').value.trim();
         const viewingRaw = row.querySelector('.pv-e-viewing').value;
         entry.viewingAt = viewingRaw ? new Date(viewingRaw).toISOString() : null;
+        const linked = ensureDossierLink(entry);
+        if (linked) await saveDossiersToStore(dossierMap);
         await savePriorityHomes();
         renderPriorityHomes();
+        if (linked) renderDossiers();
         logActivity(`edited "${entry.address}" in To View`);
       }
       return;
@@ -2910,7 +2954,7 @@
     }
     pvPendingDuplicate = null;
     const priceVal = pvPrice.value.trim().replace(/[^\d]/g, '');
-    priorityHomes.push({
+    const newEntry = {
       id: makeId(),
       address,
       price: priceVal ? parseInt(priceVal, 10) : null,
@@ -2919,9 +2963,13 @@
       link: pvLink.value.trim(),
       listingId: pvListingId.value.trim(),
       status: 'to-view'
-    });
+    };
+    priorityHomes.push(newEntry);
+    ensureDossierLink(newEntry);
+    await saveDossiersToStore(dossierMap);
     await savePriorityHomes();
     renderPriorityHomes();
+    renderDossiers();
     pvAddress.value = ''; pvPrice.value = ''; pvSource.value = ''; pvNote.value = ''; pvLink.value = ''; pvListingId.value = '';
     pvStatusMsg.textContent = 'Added.';
     logActivity(`added "${address}" to To View`);
@@ -3338,6 +3386,7 @@
       priorityHomes = SEED_PRIORITY_HOMES.map(h => ({...h, id: makeId()}));
       await savePriorityHomes();
     }
+    await reconcilePriorityHomes();
     const prev = await loadSnapshot();
     lastCurrList = prev ? prev.listings : null;
     if (prev && prev.listings){
