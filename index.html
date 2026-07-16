@@ -264,6 +264,7 @@
   .badge-gone{background:var(--danger-dim); color:var(--danger);}
   .badge-changed{background:var(--warning-dim); color:var(--warning);}
   .badge-requested{background:var(--blue-dim); color:var(--blue);}
+  .badge-responded{background:var(--accent-soft); color:var(--accent);}
   .badge-rating{background:var(--warning-dim); color:var(--warning);}
   .rating-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:14px; margin-bottom:16px;}
   .rating-cell label{font-size:11px; color:var(--ink-dim); margin-bottom:6px;}
@@ -509,6 +510,7 @@
   }
   .shortlist-status-btn.st-shortlisted{color:var(--ink-dim);}
   .shortlist-status-btn.st-requested{color:var(--blue); border-color:var(--blue);}
+  .shortlist-status-btn.st-responded{color:var(--accent); border-color:var(--accent);}
   .shortlist-status-btn.st-scheduled{color:var(--warning); border-color:var(--warning);}
   .shortlist-status-btn.st-viewed{color:var(--success); border-color:var(--success);}
   .shortlist-status-btn.st-passed{color:var(--danger); border-color:var(--danger); text-decoration:line-through;}
@@ -1888,12 +1890,13 @@
     return list;
   }
 
+  const VIEW_STATUS_BADGE_LABEL = {requested: 'VIEWING REQUESTED', responded: 'RESPONSE RECEIVED'};
   function cardBadgesHTML(h){
     const badges = [`<span class="badge badge-src-${h.source}">${SOURCE_LABELS[h.source] || h.source}</span>`];
     if (h.status === 'gone') badges.push(`<span class="badge badge-gone">GONE</span>`);
     else if (isToday(h.firstSeenAt)) badges.push(`<span class="badge badge-new">NEW</span>`);
     else if (h.lastChangeSummary && isToday(h.lastChangedAt)) badges.push(`<span class="badge badge-changed">CHANGED</span>`);
-    if (h.viewStatus === 'requested') badges.push(`<span class="badge badge-requested">VIEWING REQUESTED</span>`);
+    if (VIEW_STATUS_BADGE_LABEL[h.viewStatus]) badges.push(`<span class="badge badge-${h.viewStatus}">${VIEW_STATUS_BADGE_LABEL[h.viewStatus]}</span>`);
     return badges.join('');
   }
 
@@ -2497,8 +2500,8 @@
   // SHORTLIST VIEW
   // ============================================================
   const shortlistWrap = $('shortlistWrap'), shortlistHint = $('shortlistHint');
-  const VIEW_STATUS_CYCLE = ['shortlisted', 'requested', 'scheduled', 'viewed', 'passed'];
-  const VIEW_STATUS_LABEL = {shortlisted: 'Shortlisted', requested: 'Viewing Requested', scheduled: 'Scheduled', viewed: 'Viewed', passed: 'Passed'};
+  const VIEW_STATUS_CYCLE = ['shortlisted', 'requested', 'responded', 'scheduled', 'viewed', 'passed'];
+  const VIEW_STATUS_LABEL = {shortlisted: 'Shortlisted', requested: 'Viewing Requested', responded: 'Response Received', scheduled: 'Scheduled', viewed: 'Viewed', passed: 'Passed'};
 
   function getShortlistHomes(){
     return Object.values(register)
@@ -2558,6 +2561,8 @@
   shortlistWrap.addEventListener('click', async (e) => {
     const icsLink = e.target.closest('[data-ics-id]');
     if (icsLink){ e.preventDefault(); const h = register[icsLink.dataset.icsId]; if (h) downloadICS(h); return; }
+    if (e.target.closest('[data-lightbox-src]')) return; // handled by its own listener below
+    if (e.target.closest('input')) return; // don't hijack the scheduler's date picker
 
     const row = e.target.closest('[data-id]');
     if (!row) return;
@@ -2565,7 +2570,7 @@
     const h = register[id];
     if (!h) return;
     const btn = e.target.closest('[data-action]');
-    if (!btn) return;
+    if (!btn){ openDetail(id); return; } // clicking the row itself opens full details, same as Register cards
     const action = btn.dataset.action;
 
     if (action === 'open'){ openDetail(id); return; }
