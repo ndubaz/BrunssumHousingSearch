@@ -579,7 +579,7 @@
       <div class="stats-strip" id="statsStrip"></div>
 
       <div class="filterbar">
-        <input type="text" class="search-input" id="regSearch" placeholder="Search address, city, ID...">
+        <input type="text" class="search-input" id="regSearch" placeholder="Search nickname, address, city, ID...">
         <input type="text" id="regMinRent" placeholder="Min €">
         <input type="text" id="regMaxRent" placeholder="Max €">
         <select id="regBeds">
@@ -769,6 +769,10 @@
       </div>
 
       <div class="modal-pane active" id="paneDetails">
+        <div class="field" style="max-width:320px;">
+          <label>Nickname</label>
+          <input type="text" id="detailNickname" placeholder="e.g. The Blue House, Dad's Favorite">
+        </div>
         <div class="fact-grid" id="detailFactGrid"></div>
         <div class="field">
           <label>Description</label>
@@ -1136,6 +1140,7 @@
     const now = new Date().toISOString();
     return Object.assign({
       id: makeId('h'),
+      nickname: '',
       address: '', postal: '', city: '',
       source: 'manual', sourceUrl: '', externalId: '',
       type: '', beds: '', bathsFull: '', baths34: '', bathsHalf: '',
@@ -1166,6 +1171,15 @@
 
   function displayAddress(home){
     return home.address || home.city || 'Unknown location';
+  }
+  function displayTitle(home){
+    return home.nickname || displayAddress(home);
+  }
+  // Renders nickname (if set) as the prominent line with the real address as
+  // a smaller line underneath; falls back to just the address otherwise.
+  function titleBlockHTML(home, subSize){
+    if (!home.nickname) return escapeHTML(displayAddress(home));
+    return `${escapeHTML(home.nickname)}<br><span style="font-weight:400;color:var(--ink-faint);font-size:${subSize || '11px'};">${escapeHTML(displayAddress(home))}</span>`;
   }
 
   function findSimilarHome(address, excludeId){
@@ -1745,7 +1759,7 @@
 
   const detailModal = $('detailModal'), detailAddr = $('detailAddr'), detailBadges = $('detailBadges'),
         detailGallery = $('detailGallery'), detailPhotoInput = $('detailPhotoInput'),
-        detailFactGrid = $('detailFactGrid'), detailDescription = $('detailDescription'),
+        detailFactGrid = $('detailFactGrid'), detailDescription = $('detailDescription'), detailNickname = $('detailNickname'),
         detailSaveBtn = $('detailSaveBtn'), detailWatchBtn = $('detailWatchBtn'),
         detailShortlistBtn = $('detailShortlistBtn'), detailDeleteBtn = $('detailDeleteBtn'),
         detailCloseBtn = $('detailCloseBtn'),
@@ -1805,7 +1819,7 @@
     const f = regFilters;
     if (f.search){
       const q = f.search.toLowerCase();
-      list = list.filter(h => `${displayAddress(h)} ${h.city} ${h.externalId}`.toLowerCase().includes(q));
+      list = list.filter(h => `${displayAddress(h)} ${h.city} ${h.externalId} ${h.nickname || ''}`.toLowerCase().includes(q));
     }
     if (f.minRent) list = list.filter(h => h.rentNum && h.rentNum >= Number(f.minRent));
     if (f.maxRent) list = list.filter(h => h.rentNum && h.rentNum <= Number(f.maxRent));
@@ -1856,7 +1870,7 @@
         <button class="pcard-star ${h.watched ? 'active' : ''}" data-action="toggle-watch" title="Watch">${h.watched ? '★' : '☆'}</button>
       </div>
       <div class="pcard-body">
-        <div class="pcard-addr">${escapeHTML(displayAddress(h))}</div>
+        <div class="pcard-addr">${titleBlockHTML(h)}</div>
         <div class="pcard-facts">${facts}${score ? ` · <span class="badge badge-score">${score.met}/${score.total}</span>` : ''}</div>
         <div class="pcard-footer">
           <div class="pcard-rent ${isOverBudget(h.rentNum) ? 'over-budget' : ''}">${h.rentNum ? fmtMoney(h.rentNum) : (h.rentRaw || '—')}</div>
@@ -1997,7 +2011,7 @@
     const h = register[currentDetailId];
     if (!h) { closeDetail(); return; }
 
-    detailAddr.textContent = displayAddress(h);
+    detailAddr.innerHTML = titleBlockHTML(h, '12px');
     detailBadges.innerHTML = cardBadgesHTML(h) +
       (h.sourceUrl ? ` <a href="${escapeHTML(h.sourceUrl)}" target="_blank" rel="noopener">Source ↗</a>` : '') +
       ' ' + mapLinkHTML(displayAddress(h));
@@ -2022,6 +2036,7 @@
       `<div class="field"><label>${f.label}</label><input type="text" id="df-${f.key}" value="${escapeHTML(h[f.key] || '')}"></div>`
     ).join('');
     detailDescription.value = h.description || '';
+    detailNickname.value = h.nickname || '';
 
     detailWatchBtn.textContent = h.watched ? '★ Watched' : '☆ Watch';
     detailWatchBtn.classList.toggle('active', h.watched);
@@ -2065,20 +2080,21 @@
 
   detailSaveBtn.addEventListener('click', async () => {
     const h = register[currentDetailId]; if (!h) return;
+    h.nickname = detailNickname.value.trim();
     DETAIL_FIELDS.forEach(f => { h[f.key] = $('df-' + f.key).value.trim(); });
     h.rentNum = parseFlexibleNumber(h.rentRaw);
     h.depositNum = parseFlexibleNumber(h.depositRaw);
     h.description = detailDescription.value.trim();
     h.updatedAt = new Date().toISOString();
     persistRegister();
-    logActivity(`edited "${displayAddress(h)}"`);
+    logActivity(`edited "${displayTitle(h)}"`);
     renderRegisterView(); renderShortlistView();
   });
   detailWatchBtn.addEventListener('click', () => toggleWatch(currentDetailId));
   detailShortlistBtn.addEventListener('click', () => toggleShortlist(currentDetailId));
   detailDeleteBtn.addEventListener('click', async () => {
     const h = register[currentDetailId]; if (!h) return;
-    if (!confirm(`Remove "${displayAddress(h)}" from the register? This can't be undone.`)) return;
+    if (!confirm(`Remove "${displayTitle(h)}" from the register? This can't be undone.`)) return;
     delete register[h.id];
     compareSet.delete(h.id);
     persistRegister();
@@ -2436,7 +2452,7 @@
       <div class="shortlist-rank">${index + 1}</div>
       ${photo}
       <div class="shortlist-body">
-        <div class="shortlist-addr">${escapeHTML(displayAddress(h))} ${mapLinkHTML(displayAddress(h))}</div>
+        <div class="shortlist-addr">${titleBlockHTML(h, '12px')} ${mapLinkHTML(displayAddress(h))}</div>
         <div class="shortlist-meta">${facts}${score ? ` · <span class="badge badge-score">${score.met}/${score.total}</span>` : ''}${isOverBudget(h.rentNum) ? ' · <span class="over-budget">OVER BUDGET</span>' : ''}</div>
         ${viewingHTML}
         ${schedulerHTML}
