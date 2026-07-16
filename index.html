@@ -263,6 +263,7 @@
   .badge-new{background:var(--success-dim); color:var(--success);}
   .badge-gone{background:var(--danger-dim); color:var(--danger);}
   .badge-changed{background:var(--warning-dim); color:var(--warning);}
+  .badge-requested{background:var(--blue-dim); color:var(--blue);}
   .badge-score{background:var(--accent-soft); color:var(--accent);}
   .over-budget{color:var(--danger)!important; font-weight:700;}
 
@@ -497,6 +498,7 @@
     background:transparent; color:var(--ink-dim); white-space:nowrap;
   }
   .shortlist-status-btn.st-shortlisted{color:var(--ink-dim);}
+  .shortlist-status-btn.st-requested{color:var(--blue); border-color:var(--blue);}
   .shortlist-status-btn.st-scheduled{color:var(--warning); border-color:var(--warning);}
   .shortlist-status-btn.st-viewed{color:var(--success); border-color:var(--success);}
   .shortlist-status-btn.st-passed{color:var(--danger); border-color:var(--danger); text-decoration:line-through;}
@@ -563,6 +565,7 @@
         <button class="nav-btn" data-view="settings">Settings</button>
       </nav>
       <div class="topbar-actions">
+        <span id="syncStatus" class="faint" style="font-size:11px;min-width:52px;text-align:right;"></span>
         <button class="icon-btn" id="actorBtn" title="Signed in as">N</button>
         <button class="icon-btn" id="printBtn" title="Print / Export view">🖨</button>
       </div>
@@ -629,8 +632,9 @@
 
         <div class="panel intake-card">
           <div class="panel-title">Homes.mil Daily Dispatch <span class="hint">paste + auto-diff</span></div>
+          <div class="status-msg" style="margin-bottom:8px;">Works with either the daily dispatch dump or full Homes.mil listing detail pages (with contact info) — it auto-detects which and enriches existing entries either way.</div>
           <div class="field">
-            <textarea id="dispatchArea" placeholder="Paste the full Homes.mil listing dump here..."></textarea>
+            <textarea id="dispatchArea" placeholder="Paste the daily dispatch dump, or one or more full listing detail pages..."></textarea>
           </div>
           <div class="row-wrap">
             <button class="btn" id="processDispatchBtn">Process Dispatch</button>
@@ -988,6 +992,37 @@
     }
   }
 
+  // The register can carry many embedded photos as base64, so it's the one
+  // store worth optimizing: UI updates happen immediately against the local
+  // `register` object, and the actual save runs in the background. A queue
+  // (rather than firing overlapping saves) guarantees writes are never lost
+  // or applied out of order — if a save is already in flight when another
+  // change comes in, that change waits and the next save picks up the
+  // latest state rather than stacking parallel requests.
+  let registerSaveInFlight = false;
+  let registerSaveQueued = false;
+  let syncStatusResetTimer = null;
+  function setSyncStatus(state){
+    const el = document.getElementById('syncStatus');
+    if (!el) return;
+    clearTimeout(syncStatusResetTimer);
+    if (state === 'saving'){ el.textContent = 'Saving…'; el.style.color = 'var(--ink-faint)'; }
+    else if (state === 'saved'){
+      el.textContent = 'Saved'; el.style.color = 'var(--success)';
+      syncStatusResetTimer = setTimeout(() => { el.textContent = ''; }, 2000);
+    } else if (state === 'error'){ el.textContent = 'Save failed — retrying'; el.style.color = 'var(--danger)'; }
+  }
+  async function persistRegister(){
+    if (registerSaveInFlight){ registerSaveQueued = true; return; }
+    registerSaveInFlight = true;
+    setSyncStatus('saving');
+    const ok = await saveJSON(REGISTER_KEY, register);
+    registerSaveInFlight = false;
+    setSyncStatus(ok ? 'saved' : 'error');
+    if (registerSaveQueued){ registerSaveQueued = false; persistRegister(); }
+    else if (!ok){ setTimeout(persistRegister, 3000); } // retry a hard failure after a beat
+  }
+
   // ============================================================
   // MODULE STATE
   // ============================================================
@@ -1112,7 +1147,7 @@
       description: '', amenitiesText: '',
       photos: [],
       status: 'active',
-      firstSeenAt: now, lastSeenAt: now, lastChangeSummary: null,
+      firstSeenAt: now, lastSeenAt: now, lastChangeSummary: null, lastChangedAt: null,
       watched: false,
       viewStatus: 'none', // none | shortlisted | scheduled | viewed | passed
       rank: null, viewingAt: null,
@@ -1595,7 +1630,7 @@
         } else updated++;
         Object.assign(home, p, {status: 'active', lastSeenAt: now, updatedAt: now});
       });
-      await saveJSON(REGISTER_KEY, register);
+      persistRegister();
       return {mode: 'detail', added, updated, skippedGerman, skippedUnparsed, total: saved.length};
     }
 
@@ -1626,7 +1661,7 @@
         home.rentRaw = p.rentRaw; home.rentNum = p.rentNum;
         home.available = p.available; home.inspection = p.inspection;
         home.status = 'active'; home.lastSeenAt = now; home.updatedAt = now;
-        if (diffs.length){ home.lastChangeSummary = diffs.join(', '); changed++; }
+        if (diffs.length){ home.lastChangeSummary = diffs.join(', '); home.lastChangedAt = now; changed++; }
       }
     });
     let removed = 0;
@@ -1635,7 +1670,7 @@
         h.status = 'gone'; h.updatedAt = now; removed++;
       }
     });
-    await saveJSON(REGISTER_KEY, register);
+    persistRegister();
     return {mode: 'dispatch', added, changed, removed, total: parsed.length};
   }
 
@@ -1650,7 +1685,7 @@
         matched++;
       }
     });
-    if (matched) await saveJSON(REGISTER_KEY, register);
+    if (matched) persistRegister();
     return matched;
   }
 
@@ -1796,7 +1831,8 @@
     const badges = [`<span class="badge badge-src-${h.source}">${SOURCE_LABELS[h.source] || h.source}</span>`];
     if (h.status === 'gone') badges.push(`<span class="badge badge-gone">GONE</span>`);
     else if (isToday(h.firstSeenAt)) badges.push(`<span class="badge badge-new">NEW</span>`);
-    else if (h.lastChangeSummary && isToday(h.updatedAt)) badges.push(`<span class="badge badge-changed">CHANGED</span>`);
+    else if (h.lastChangeSummary && isToday(h.lastChangedAt)) badges.push(`<span class="badge badge-changed">CHANGED</span>`);
+    if (h.viewStatus === 'requested') badges.push(`<span class="badge badge-requested">VIEWING REQUESTED</span>`);
     return badges.join('');
   }
 
@@ -1883,7 +1919,7 @@
   async function toggleWatch(id){
     const h = register[id]; if (!h) return;
     h.watched = !h.watched; h.updatedAt = new Date().toISOString();
-    await saveJSON(REGISTER_KEY, register);
+    persistRegister();
     logActivity(`${h.watched ? 'starred' : 'unstarred'} ${displayAddress(h)}`);
     renderRegisterView();
     if (currentDetailId === id) renderDetailModal();
@@ -1898,7 +1934,7 @@
       h.rank = maxRank + 1;
     }
     h.updatedAt = new Date().toISOString();
-    await saveJSON(REGISTER_KEY, register);
+    persistRegister();
     logActivity(`${h.viewStatus !== 'none' ? 'added' : 'removed'} ${displayAddress(h)} ${h.viewStatus !== 'none' ? 'to' : 'from'} the shortlist`);
     renderRegisterView();
     renderShortlistView();
@@ -1977,7 +2013,7 @@
       btn.addEventListener('click', async () => {
         h.photos = h.photos.filter(p => p.id !== btn.dataset.photoId);
         h.updatedAt = new Date().toISOString();
-        await saveJSON(REGISTER_KEY, register);
+        persistRegister();
         renderDetailModal(); renderRegisterView();
       });
     });
@@ -2002,7 +2038,7 @@
     detailNotesThread.querySelectorAll('.note-del').forEach(btn => {
       btn.addEventListener('click', async () => {
         h.notes = h.notes.filter(n => n.id !== btn.dataset.noteId);
-        await saveJSON(REGISTER_KEY, register);
+        persistRegister();
         renderDetailModal();
       });
     });
@@ -2018,7 +2054,7 @@
       cb.addEventListener('change', async () => {
         h.scoreChecks[cb.dataset.criterion] = cb.checked;
         h.updatedAt = new Date().toISOString();
-        await saveJSON(REGISTER_KEY, register);
+        persistRegister();
         renderDetailModal(); renderRegisterView(); renderShortlistView();
       });
     });
@@ -2034,7 +2070,7 @@
     h.depositNum = parseFlexibleNumber(h.depositRaw);
     h.description = detailDescription.value.trim();
     h.updatedAt = new Date().toISOString();
-    await saveJSON(REGISTER_KEY, register);
+    persistRegister();
     logActivity(`edited "${displayAddress(h)}"`);
     renderRegisterView(); renderShortlistView();
   });
@@ -2045,7 +2081,7 @@
     if (!confirm(`Remove "${displayAddress(h)}" from the register? This can't be undone.`)) return;
     delete register[h.id];
     compareSet.delete(h.id);
-    await saveJSON(REGISTER_KEY, register);
+    persistRegister();
     logActivity(`deleted "${displayAddress(h)}" from the register`);
     closeDetail();
     renderRegisterView(); renderShortlistView(); renderCompareBar();
@@ -2056,7 +2092,7 @@
     if (!text) return;
     h.notes.push({id: makeId('nt'), text, author: getActor(), ts: new Date().toISOString()});
     h.updatedAt = new Date().toISOString();
-    await saveJSON(REGISTER_KEY, register);
+    persistRegister();
     detailNoteInput.value = '';
     renderDetailModal();
     logActivity(`added a note to "${displayAddress(h)}"`);
@@ -2071,7 +2107,7 @@
       const dataUrl = await readFileAsDataURL(file);
       register[targetId].photos.push({id: makeId('ph'), dataUrl, addedAt: new Date().toISOString()});
       register[targetId].updatedAt = new Date().toISOString();
-      await saveJSON(REGISTER_KEY, register);
+      persistRegister();
       if (currentDetailId === targetId) renderDetailModal();
       renderRegisterView(); renderShortlistView();
     } catch(err){ /* silently ignore a bad file read */ }
@@ -2168,7 +2204,7 @@
   clearBaselineBtn.addEventListener('click', async () => {
     if (!confirm('This removes every Homes.mil-sourced listing from the register (Funda/Pararius/Instagram/Manual entries are untouched). Continue?')) return;
     Object.keys(register).forEach(id => { if (register[id].source === 'homesmil') delete register[id]; });
-    await saveJSON(REGISTER_KEY, register);
+    persistRegister();
     dispatchResultWrap.innerHTML = '';
     dispatchStatus.textContent = 'Homes.mil baseline cleared.'; dispatchStatus.className = 'status-msg';
     renderRegisterView();
@@ -2236,7 +2272,7 @@
       collected.rentNum = parseFlexibleNumber(collected.rentRaw);
       collected.depositNum = parseFlexibleNumber(collected.depositRaw);
       const home = createDutchHome(collected, sourceUrl, sourceType);
-      await saveJSON(REGISTER_KEY, register);
+      persistRegister();
       dutchReviewWrap.innerHTML = '';
       dutchStatus.textContent = `Saved "${collected.address}" to the register.`; dutchStatus.className = 'status-msg ok';
       logActivity(`added "${collected.address}" from ${sourceUrl ? sourceType : 'pasted listing text'}`);
@@ -2315,7 +2351,7 @@
       collected.rentNum = parseFlexibleNumber(collected.rentRaw);
       collected.city = collected.address;
       createScreenshotHome(collected, imageDataUrl);
-      await saveJSON(REGISTER_KEY, register);
+      persistRegister();
       screenshotReviewWrap.innerHTML = '';
       screenshotStatus.textContent = `Saved "${collected.address}" to the register.`; screenshotStatus.className = 'status-msg ok';
       logActivity(`added "${collected.address}" from a screenshot`);
@@ -2364,7 +2400,7 @@
     manualPendingDup = null;
     const rentNum = parseFlexibleNumber(manualRent.value.trim());
     addManualHome(address, rentNum, manualSource.value.trim(), manualLink.value.trim());
-    await saveJSON(REGISTER_KEY, register);
+    persistRegister();
     manualAddress.value = ''; manualRent.value = ''; manualSource.value = ''; manualLink.value = '';
     manualStatus.textContent = 'Added to the register.'; manualStatus.className = 'status-msg ok';
     logActivity(`manually added "${address}"`);
@@ -2376,8 +2412,8 @@
   // SHORTLIST VIEW
   // ============================================================
   const shortlistWrap = $('shortlistWrap'), shortlistHint = $('shortlistHint');
-  const VIEW_STATUS_CYCLE = ['shortlisted', 'scheduled', 'viewed', 'passed'];
-  const VIEW_STATUS_LABEL = {shortlisted: 'Shortlisted', scheduled: 'Scheduled', viewed: 'Viewed', passed: 'Passed'};
+  const VIEW_STATUS_CYCLE = ['shortlisted', 'requested', 'scheduled', 'viewed', 'passed'];
+  const VIEW_STATUS_LABEL = {shortlisted: 'Shortlisted', requested: 'Viewing Requested', scheduled: 'Scheduled', viewed: 'Viewed', passed: 'Passed'};
 
   function getShortlistHomes(){
     return Object.values(register)
@@ -2453,14 +2489,14 @@
       const val = $('sched-input-' + id).value;
       h.viewingAt = val ? new Date(val).toISOString() : null;
       h.updatedAt = new Date().toISOString();
-      await saveJSON(REGISTER_KEY, register);
+      persistRegister();
       logActivity(`scheduled a viewing for "${displayAddress(h)}"`);
       renderShortlistView();
       return;
     }
     if (action === 'clear-schedule'){
       h.viewingAt = null; h.updatedAt = new Date().toISOString();
-      await saveJSON(REGISTER_KEY, register);
+      persistRegister();
       renderShortlistView();
       return;
     }
@@ -2468,14 +2504,14 @@
       const cur = VIEW_STATUS_CYCLE.indexOf(h.viewStatus);
       h.viewStatus = VIEW_STATUS_CYCLE[(cur + 1) % VIEW_STATUS_CYCLE.length];
       h.updatedAt = new Date().toISOString();
-      await saveJSON(REGISTER_KEY, register);
+      persistRegister();
       logActivity(`marked "${displayAddress(h)}" as ${VIEW_STATUS_LABEL[h.viewStatus]}`);
       renderShortlistView(); renderRegisterView();
       return;
     }
     if (action === 'remove'){
       h.viewStatus = 'none'; h.rank = null; h.updatedAt = new Date().toISOString();
-      await saveJSON(REGISTER_KEY, register);
+      persistRegister();
       logActivity(`removed "${displayAddress(h)}" from the shortlist`);
       renderShortlistView(); renderRegisterView();
       return;
@@ -2487,7 +2523,7 @@
       if (swapIdx < 0 || swapIdx >= list.length) return;
       const a = list[idx], b = list[swapIdx];
       const tmp = a.rank; a.rank = b.rank; b.rank = tmp;
-      await saveJSON(REGISTER_KEY, register);
+      persistRegister();
       renderShortlistView();
     }
   });
@@ -2737,7 +2773,7 @@
     if (importedOha !== null && !settings.oha) settings.oha = importedOha;
     if (importedActivity.length) activity = activity.concat(importedActivity).sort((a, b) => new Date(a.ts) - new Date(b.ts));
 
-    await saveJSON(REGISTER_KEY, register);
+    persistRegister();
     await saveJSON(CRITERIA_KEY, criteria);
     await saveJSON(SETTINGS_KEY, settings);
     await saveJSON(ACTIVITY_KEY, activity);
