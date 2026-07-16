@@ -264,6 +264,16 @@
   .badge-gone{background:var(--danger-dim); color:var(--danger);}
   .badge-changed{background:var(--warning-dim); color:var(--warning);}
   .badge-requested{background:var(--blue-dim); color:var(--blue);}
+  .badge-rating{background:var(--warning-dim); color:var(--warning);}
+  .rating-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:14px; margin-bottom:16px;}
+  .rating-cell label{font-size:11px; color:var(--ink-dim); margin-bottom:6px;}
+  .rating-cell input{font-size:16px; text-align:center; font-family:'Big Shoulders Condensed',sans-serif; font-weight:700;}
+  .rating-average{
+    background:var(--panel-raised); border:1px solid var(--border-bright); border-radius:var(--radius-lg);
+    padding:16px 20px; text-align:center; margin-bottom:16px;
+  }
+  .rating-average .num{font-family:'Big Shoulders Condensed',sans-serif; font-weight:800; font-size:36px; color:var(--warning);}
+  .rating-average .label{font-size:11px; color:var(--ink-faint); letter-spacing:0.06em; text-transform:uppercase; margin-top:2px;}
   .badge-score{background:var(--accent-soft); color:var(--accent);}
   .over-budget{color:var(--danger)!important; font-weight:700;}
 
@@ -614,6 +624,7 @@
           <option value="rent-desc">Rent: high to low</option>
           <option value="score-desc">Match score</option>
           <option value="sqm-desc">Largest first</option>
+          <option value="rating-desc">Rating: highest first</option>
         </select>
         <button class="btn-ghost btn btn-sm" id="regClearFilters">Clear</button>
         <span class="spacer"></span>
@@ -766,6 +777,7 @@
         <button class="modal-tab-btn active" data-pane="details">Details</button>
         <button class="modal-tab-btn" data-pane="notes">Notes <span id="detailNotesCount"></span></button>
         <button class="modal-tab-btn" data-pane="score">Match Score <span id="detailScoreCount"></span></button>
+        <button class="modal-tab-btn" data-pane="ratings">Ratings <span id="detailRatingCount"></span></button>
       </div>
 
       <div class="modal-pane active" id="paneDetails">
@@ -796,6 +808,25 @@
       <div class="modal-pane" id="paneScore">
         <div class="score-checklist" id="detailScoreChecklist"></div>
         <div class="status-msg">Based on the "Multiple Agreement" priorities in Settings.</div>
+      </div>
+
+      <div class="modal-pane" id="paneRatings">
+        <div class="rating-average" id="detailRatingAverage"></div>
+        <div class="rating-grid">
+          <div class="rating-cell field">
+            <label>Anne (out of 10)</label>
+            <input type="number" id="rate-anne" min="0" max="10" step="0.5" placeholder="—">
+          </div>
+          <div class="rating-cell field">
+            <label>Nick (out of 10)</label>
+            <input type="number" id="rate-nick" min="0" max="10" step="0.5" placeholder="—">
+          </div>
+          <div class="rating-cell field">
+            <label>Alma (out of 10)</label>
+            <input type="number" id="rate-alma" min="0" max="10" step="0.5" placeholder="—">
+          </div>
+        </div>
+        <div class="status-msg">Post-viewing ratings — enter whenever each person has seen it. The average updates as each rating comes in.</div>
       </div>
     </div>
   </div>
@@ -1157,6 +1188,7 @@
       viewStatus: 'none', // none | shortlisted | scheduled | viewed | passed
       rank: null, viewingAt: null,
       scoreChecks: {},
+      ratings: {anne: null, nick: null, alma: null},
       notes: [],
       createdAt: now, updatedAt: now
     }, overrides || {});
@@ -1167,6 +1199,18 @@
     if (!list.length) return null;
     const met = list.filter(c => home.scoreChecks && home.scoreChecks[c]).length;
     return {met, total: list.length};
+  }
+
+  // Averages whichever of Anne/Nick/Alma's post-viewing ratings have been
+  // entered so far — doesn't require all three before showing a number.
+  function ratingAverage(home){
+    const r = home.ratings || {};
+    const vals = ['anne', 'nick', 'alma'].map(k => r[k]).filter(v => v !== null && v !== '' && v !== undefined && !isNaN(v));
+    if (!vals.length) return null;
+    return vals.reduce((a, b) => a + Number(b), 0) / vals.length;
+  }
+  function fmtRating(n){
+    return Number.isInteger(n) ? String(n) : n.toFixed(1);
   }
 
   function displayAddress(home){
@@ -1765,7 +1809,9 @@
         detailCloseBtn = $('detailCloseBtn'),
         detailNotesThread = $('detailNotesThread'), detailNoteInput = $('detailNoteInput'),
         detailNoteAddBtn = $('detailNoteAddBtn'), detailNotesCount = $('detailNotesCount'),
-        detailScoreChecklist = $('detailScoreChecklist'), detailScoreCount = $('detailScoreCount');
+        detailScoreChecklist = $('detailScoreChecklist'), detailScoreCount = $('detailScoreCount'),
+        detailRatingAverage = $('detailRatingAverage'), detailRatingCount = $('detailRatingCount'),
+        rateAnne = $('rate-anne'), rateNick = $('rate-nick'), rateAlma = $('rate-alma');
 
   const compareBar = $('compareBar'), compareBarText = $('compareBarText'),
         compareViewBtn = $('compareViewBtn'), compareClearBtn = $('compareClearBtn'),
@@ -1835,7 +1881,8 @@
       'rent-asc': (a, b) => (a.rentNum ?? Infinity) - (b.rentNum ?? Infinity),
       'rent-desc': (a, b) => (b.rentNum || 0) - (a.rentNum || 0),
       'score-desc': (a, b) => { const sa = scoreFor(a), sb = scoreFor(b); return (sb ? sb.met : -1) - (sa ? sa.met : -1); },
-      'sqm-desc': (a, b) => (Number(b.sqm) || 0) - (Number(a.sqm) || 0)
+      'sqm-desc': (a, b) => (Number(b.sqm) || 0) - (Number(a.sqm) || 0),
+      'rating-desc': (a, b) => { const ra = ratingAverage(a), rb = ratingAverage(b); return (rb ?? -1) - (ra ?? -1); }
     };
     list.sort(sortFns[regSort] || sortFns['added-desc']);
     return list;
@@ -1860,6 +1907,7 @@
 
   function cardHTML(h){
     const score = scoreFor(h);
+    const avgRating = ratingAverage(h);
     const shortlisted = h.viewStatus && h.viewStatus !== 'none';
     const comparing = compareSet.has(h.id);
     const facts = [h.type, h.beds ? h.beds + 'bd' : '', h.bathsFull ? h.bathsFull + 'ba' : '', h.sqm ? h.sqm + 'm²' : ''].filter(Boolean).join(' · ');
@@ -1871,7 +1919,7 @@
       </div>
       <div class="pcard-body">
         <div class="pcard-addr">${titleBlockHTML(h)}</div>
-        <div class="pcard-facts">${facts}${score ? ` · <span class="badge badge-score">${score.met}/${score.total}</span>` : ''}</div>
+        <div class="pcard-facts">${facts}${score ? ` · <span class="badge badge-score">${score.met}/${score.total}</span>` : ''}${avgRating !== null ? ` · <span class="badge badge-rating">★ ${fmtRating(avgRating)}/10</span>` : ''}</div>
         <div class="pcard-footer">
           <div class="pcard-rent ${isOverBudget(h.rentNum) ? 'over-budget' : ''}">${h.rentNum ? fmtMoney(h.rentNum) : (h.rentRaw || '—')}</div>
           <div class="pcard-actions">
@@ -2074,6 +2122,26 @@
       });
     });
 
+    const ratings = h.ratings || {anne: null, nick: null, alma: null};
+    rateAnne.value = ratings.anne ?? ''; rateNick.value = ratings.nick ?? ''; rateAlma.value = ratings.alma ?? '';
+    const avg = ratingAverage(h);
+    detailRatingAverage.innerHTML = avg !== null
+      ? `<div class="num">${fmtRating(avg)}</div><div class="label">Average of ${['anne','nick','alma'].filter(k => ratings[k] !== null && ratings[k] !== undefined && ratings[k] !== '').length}/3 ratings</div>`
+      : `<div class="label" style="font-size:13px;">No ratings yet — enter them after a viewing</div>`;
+    detailRatingCount.textContent = avg !== null ? `(${fmtRating(avg)})` : '';
+    [['anne', rateAnne], ['nick', rateNick], ['alma', rateAlma]].forEach(([key, input]) => {
+      input.onchange = async () => {
+        const v = input.value.trim();
+        const num = v === '' ? null : Math.max(0, Math.min(10, parseFloat(v)));
+        if (!h.ratings) h.ratings = {anne: null, nick: null, alma: null};
+        h.ratings[key] = num;
+        h.updatedAt = new Date().toISOString();
+        persistRegister();
+        logActivity(`rated "${displayTitle(h)}" ${num === null ? '(cleared)' : num + '/10'} — ${key.charAt(0).toUpperCase() + key.slice(1)}`);
+        renderDetailModal(); renderRegisterView(); renderShortlistView();
+      };
+    });
+
     document.querySelectorAll('.modal-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.pane === currentDetailPane));
     document.querySelectorAll('.modal-pane').forEach(p => p.classList.toggle('active', p.id === 'pane' + currentDetailPane.charAt(0).toUpperCase() + currentDetailPane.slice(1)));
   }
@@ -2161,7 +2229,8 @@
       ['m²', items.map(h => h.sqm || '—')],
       ['Rent', items.map(h => h.rentNum ? fmtMoney(h.rentNum) : (h.rentRaw || '—'))],
       ['Available', items.map(h => h.available || '—')],
-      ['Match', items.map(h => { const s = scoreFor(h); return s ? `${s.met}/${s.total}` : '—'; })]
+      ['Match', items.map(h => { const s = scoreFor(h); return s ? `${s.met}/${s.total}` : '—'; })],
+      ['Rating', items.map(h => { const r = ratingAverage(h); return r !== null ? `${fmtRating(r)}/10` : '—'; })]
     ];
     const header = `<tr><th></th>${items.map(h => `<th>${escapeHTML(displayAddress(h))}</th>`).join('')}</tr>`;
     const body = rows.map(([label, vals]) => `<tr><th>${escapeHTML(label)}</th>${vals.map(v => `<td>${escapeHTML(String(v))}</td>`).join('')}</tr>`).join('');
@@ -2448,6 +2517,9 @@
     </div>`;
     const lastNote = h.notes.length ? h.notes[h.notes.length - 1] : null;
     const noteHTML = lastNote ? `<div style="font-size:11.5px;color:var(--ink-dim);margin-top:4px;">📝 ${escapeHTML(lastNote.text.slice(0, 90))}${lastNote.text.length > 90 ? '…' : ''}</div>` : '';
+    const r = h.ratings || {};
+    const avgRating = ratingAverage(h);
+    const ratingHTML = avgRating !== null ? `<div style="font-size:11.5px;color:var(--warning);margin-top:4px;">★ Anne ${r.anne ?? '—'} · Nick ${r.nick ?? '—'} · Alma ${r.alma ?? '—'} <b>→ Avg ${fmtRating(avgRating)}/10</b></div>` : '';
     return `<div class="shortlist-row" data-id="${h.id}">
       <div class="shortlist-rank">${index + 1}</div>
       ${photo}
@@ -2456,6 +2528,7 @@
         <div class="shortlist-meta">${facts}${score ? ` · <span class="badge badge-score">${score.met}/${score.total}</span>` : ''}${isOverBudget(h.rentNum) ? ' · <span class="over-budget">OVER BUDGET</span>' : ''}</div>
         ${viewingHTML}
         ${schedulerHTML}
+        ${ratingHTML}
         ${noteHTML}
       </div>
       <div class="shortlist-controls">
