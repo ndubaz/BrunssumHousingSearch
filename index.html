@@ -824,7 +824,7 @@
     </div>
     <div class="modal-body">
       <div class="gallery" id="detailGallery"></div>
-      <input type="file" id="detailPhotoInput" accept="image/*" style="display:none;">
+      <input type="file" id="detailPhotoInput" accept="image/*" multiple style="display:none;">
 
       <div class="modal-tabs">
         <button class="modal-tab-btn active" data-pane="details">Details</button>
@@ -1179,6 +1179,45 @@
       reader.readAsDataURL(file);
     });
   }
+
+  // Downscales and re-encodes as JPEG before storing — iPhone photos can run
+  // several MB each, and with mass-upload now possible that adds up fast in
+  // a register that already gets fully re-fetched/re-saved as one blob.
+  // Falls back to the original file's data URL if anything about decoding
+  // or drawing the image fails — and a hard timeout guarantees that even if
+  // decoding just silently never fires an event for one bad file, it can't
+  // stall the rest of the batch forever.
+  function compressImageFile(file, maxDim, quality){
+    return new Promise((resolve) => {
+      let settled = false;
+      const settle = (val) => { if (!settled){ settled = true; resolve(val); } };
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        const giveUpTimer = setTimeout(() => settle(reader.result), 8000);
+        img.onload = () => {
+          clearTimeout(giveUpTimer);
+          try{
+            let width = img.naturalWidth, height = img.naturalHeight;
+            if (width > maxDim || height > maxDim){
+              if (width >= height){ height = Math.round(height * maxDim / width); width = maxDim; }
+              else { width = Math.round(width * maxDim / height); height = maxDim; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            settle(canvas.toDataURL('image/jpeg', quality));
+          } catch(e){ settle(reader.result); }
+        };
+        img.onerror = () => { clearTimeout(giveUpTimer); settle(reader.result); };
+        img.src = reader.result;
+      };
+      reader.onerror = () => settle(null);
+      reader.readAsDataURL(file);
+    });
+  }
+
   // Detects Dutch (2.750 = two thousand) vs English (2,750 = two thousand)
   // thousands-separator conventions rather than assuming one.
   function parseFlexibleNumber(str){
@@ -2237,18 +2276,36 @@
   });
 
   detailPhotoInput.addEventListener('change', async () => {
-    const file = detailPhotoInput.files[0];
+    const files = Array.from(detailPhotoInput.files || []);
     const targetId = pendingPhotoTargetId;
     detailPhotoInput.value = ''; pendingPhotoTargetId = null;
-    if (!file || !targetId || !register[targetId]) return;
-    try{
-      const dataUrl = await readFileAsDataURL(file);
-      register[targetId].photos.push({id: makeId('ph'), dataUrl, addedAt: new Date().toISOString()});
-      register[targetId].updatedAt = new Date().toISOString();
+    if (!files.length || !targetId || !register[targetId]) return;
+
+    const home = register[targetId];
+    const addBtn = document.getElementById('galleryAddBtn');
+    const originalLabel = addBtn ? addBtn.textContent : null;
+    if (addBtn) addBtn.disabled = true;
+
+    let added = 0;
+    for (let i = 0; i < files.length; i++){
+      if (addBtn) addBtn.textContent = files.length > 1 ? `${i + 1}/${files.length}…` : '…';
+      try{
+        const dataUrl = await compressImageFile(files[i], 1600, 0.82);
+        if (dataUrl){
+          home.photos.push({id: makeId('ph'), dataUrl, addedAt: new Date().toISOString()});
+          added++;
+        }
+      } catch(err){ /* skip this one, keep going */ }
+    }
+
+    if (addBtn){ addBtn.disabled = false; if (originalLabel) addBtn.textContent = originalLabel; }
+    if (added){
+      home.updatedAt = new Date().toISOString();
       persistRegister();
-      if (currentDetailId === targetId) renderDetailModal();
-      renderRegisterView(); renderShortlistView();
-    } catch(err){ /* silently ignore a bad file read */ }
+      logActivity(`added ${added} photo${added === 1 ? '' : 's'} to "${displayTitle(home)}"`);
+    }
+    if (currentDetailId === targetId) renderDetailModal();
+    renderRegisterView(); renderShortlistView();
   });
 
   // ============================================================
