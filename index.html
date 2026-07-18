@@ -867,6 +867,7 @@
           <button class="btn" id="detailSaveBtn">Save Changes</button>
           <button class="btn-ghost btn" id="detailWatchBtn">☆ Watch</button>
           <button class="btn-ghost btn" id="detailShortlistBtn">+ Shortlist</button>
+          <button class="btn-ghost btn" id="detailGoneBtn">⊘ Mark as Gone</button>
           <span class="spacer"></span>
           <button class="btn-danger btn" id="detailDeleteBtn">Delete</button>
         </div>
@@ -1997,7 +1998,7 @@
         detailGallery = $('detailGallery'), detailPhotoInput = $('detailPhotoInput'),
         detailFactGrid = $('detailFactGrid'), detailDescription = $('detailDescription'), detailNickname = $('detailNickname'),
         detailSaveBtn = $('detailSaveBtn'), detailWatchBtn = $('detailWatchBtn'),
-        detailShortlistBtn = $('detailShortlistBtn'), detailDeleteBtn = $('detailDeleteBtn'),
+        detailShortlistBtn = $('detailShortlistBtn'), detailGoneBtn = $('detailGoneBtn'), detailDeleteBtn = $('detailDeleteBtn'),
         detailCloseBtn = $('detailCloseBtn'),
         detailNotesThread = $('detailNotesThread'), detailNoteInput = $('detailNoteInput'),
         detailNoteAddBtn = $('detailNoteAddBtn'), detailNotesCount = $('detailNotesCount'),
@@ -2287,6 +2288,9 @@
     detailWatchBtn.classList.toggle('active', h.watched);
     const shortlisted = h.viewStatus && h.viewStatus !== 'none';
     detailShortlistBtn.textContent = shortlisted ? '✓ On Shortlist' : '+ Shortlist';
+    detailGoneBtn.textContent = h.status === 'gone' ? '↺ Mark as Active Again' : '⊘ Mark as Gone';
+    detailGoneBtn.style.color = h.status === 'gone' ? 'var(--danger)' : '';
+    detailGoneBtn.style.borderColor = h.status === 'gone' ? 'var(--danger)' : '';
 
     detailNotesCount.textContent = h.notes.length ? `(${h.notes.length})` : '';
     detailNotesThread.innerHTML = h.notes.length ? h.notes.slice().reverse().map(n => `
@@ -2357,6 +2361,14 @@
   });
   detailWatchBtn.addEventListener('click', () => toggleWatch(currentDetailId));
   detailShortlistBtn.addEventListener('click', () => toggleShortlist(currentDetailId));
+  detailGoneBtn.addEventListener('click', async () => {
+    const h = register[currentDetailId]; if (!h) return;
+    h.status = h.status === 'gone' ? 'active' : 'gone';
+    h.updatedAt = new Date().toISOString();
+    persistRegister();
+    logActivity(`marked "${displayTitle(h)}" as ${h.status === 'gone' ? 'gone — rented/unavailable' : 'active again'}`);
+    renderDetailModal(); renderRegisterView(); renderShortlistView();
+  });
   detailDeleteBtn.addEventListener('click', async () => {
     const h = register[currentDetailId]; if (!h) return;
     if (!confirm(`Remove "${displayTitle(h)}" from the register? This can't be undone.`)) return;
