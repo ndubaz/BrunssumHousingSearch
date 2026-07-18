@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "api/migrate-register.js": {
+      "maxDuration": 30
+    },
+    "api/diagnose.js": {
+      "maxDuration": 30
+    }
+  }
+}
