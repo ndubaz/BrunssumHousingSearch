@@ -787,6 +787,25 @@
         <div class="status-msg" id="importBackupStatus">Existing homes are never overwritten — only new ones are added.</div>
       </div>
 
+      <div class="panel" style="border-color:var(--accent-dim);">
+        <div class="panel-title" style="color:var(--accent);">Missing Homes? Rebuild Index</div>
+        <div class="status-msg" style="margin-bottom:10px;">If homes you added seem to have disappeared after a repair, click this — it scans for every home's actual stored data in Redis and restores it to the list the app reads from. This only ever adds entries back; it never deletes anything. Safe to run any number of times.</div>
+        <button class="btn" id="rebuildIndexBtn">Rebuild Index</button>
+        <div class="status-msg" id="rebuildIndexStatus"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Storage Maintenance <span class="hint">only needed if something isn't loading</span></div>
+        <div class="status-msg" style="margin-bottom:10px;">"Check Storage Health" lists every stored item's size, so anything too large to ever load can be found and cleared directly. "Recover / Repair" moves any leftover data from before photos had their own storage into smaller pieces — safe to run more than once.</div>
+        <div class="row-wrap">
+          <button class="btn-ghost btn" id="diagnoseStorageBtn">Check Storage Health</button>
+          <button class="btn-ghost btn" id="repairStorageBtn">Recover / Repair Storage</button>
+        </div>
+        <div class="status-msg" id="storageMaintStatus"></div>
+        <div id="storageMaintResult" style="margin-top:10px;"></div>
+        <div class="status-msg" id="repairStorageStatus"></div>
+      </div>
+
       <div class="panel">
         <div class="panel-title">Activity Log</div>
         <div id="activityWrap"></div>
@@ -824,6 +843,7 @@
     </div>
     <div class="modal-body">
       <div class="gallery" id="detailGallery"></div>
+      <div class="status-msg" id="detailPhotoStatus" style="margin-bottom:14px;"></div>
       <input type="file" id="detailPhotoInput" accept="image/*" multiple style="display:none;">
 
       <div class="modal-tabs">
@@ -1054,7 +1074,10 @@
   // ============================================================
   // STORAGE LAYER
   // ============================================================
-  const REGISTER_KEY = 'homeops-register';
+  const REGISTER_KEY = 'homeops-register'; // old, retired combined blob — kept only for the migration path
+  const REGISTER_INDEX_KEY = 'homeops-register-index';
+  function homeKey(id){ return 'homeops-home-' + id; }
+  function photoKey(id){ return 'homeops-photo-' + id; }
   const HISTORY_KEY = 'homeops-history';
   const CRITERIA_KEY = 'homeops-criteria';
   const SETTINGS_KEY = 'homeops-settings';
@@ -1104,11 +1127,60 @@
     if (registerSaveInFlight){ registerSaveQueued = true; return; }
     registerSaveInFlight = true;
     setSyncStatus('saving');
-    const ok = await saveJSON(REGISTER_KEY, register);
+    let ok = true;
+    try{
+      const ids = Object.keys(register);
+      await saveJSON(REGISTER_INDEX_KEY, ids);
+      // Each home is its own small key, and — critically — never carries
+      // photo data URLs in this pass. That's what caused GET /api/storage
+      // to start failing with 413 once enough photos piled up: the whole
+      // register, photos included, was one blob that eventually exceeded
+      // the payload limit for a single response. Photos are saved/deleted
+      // through their own keys at the specific points they change (see
+      // savePhotoToStorage / deletePhotoFromStorage below), so this pass
+      // stays small regardless of how many photos exist.
+      await Promise.all(ids.map(id => {
+        const home = register[id];
+        const meta = Object.assign({}, home, {
+          photos: (home.photos || []).map(p => ({id: p.id, addedAt: p.addedAt}))
+        });
+        return saveJSON(homeKey(id), meta);
+      }));
+    } catch(e){ ok = false; }
     registerSaveInFlight = false;
     setSyncStatus(ok ? 'saved' : 'error');
     if (registerSaveQueued){ registerSaveQueued = false; persistRegister(); }
     else if (!ok){ setTimeout(persistRegister, 3000); } // retry a hard failure after a beat
+  }
+
+  async function loadRegister(){
+    const ids = await loadJSON(REGISTER_INDEX_KEY, []);
+    const reg = {};
+    const homeResults = await Promise.all(ids.map(id => loadJSON(homeKey(id), null)));
+    ids.forEach((id, i) => {
+      if (homeResults[i]){ homeResults[i].id = id; reg[id] = homeResults[i]; }
+    });
+    // Photos load as a second pass, each its own small request — safe at
+    // any volume since no single response ever carries more than one photo.
+    const photoJobs = [];
+    Object.values(reg).forEach(home => {
+      (home.photos || []).forEach(ref => {
+        photoJobs.push(loadJSON(photoKey(ref.id), null).then(dataUrl => { if (dataUrl) ref.dataUrl = dataUrl; }));
+      });
+    });
+    await Promise.all(photoJobs);
+    return reg;
+  }
+
+  async function savePhotoToStorage(photoId, dataUrl){
+    try{ await saveJSON(photoKey(photoId), dataUrl); return true; } catch(e){ return false; }
+  }
+  async function deletePhotoFromStorage(photoId){
+    try{ await window.storage.delete(photoKey(photoId), false); } catch(e){}
+  }
+  async function deleteHomeStorageAll(home){
+    try{ await window.storage.delete(homeKey(home.id), false); } catch(e){}
+    await Promise.all((home.photos || []).map(p => deletePhotoFromStorage(p.id)));
   }
 
   // ============================================================
@@ -1180,13 +1252,40 @@
     });
   }
 
-  // Downscales and re-encodes as JPEG before storing — iPhone photos can run
-  // several MB each, and with mass-upload now possible that adds up fast in
-  // a register that already gets fully re-fetched/re-saved as one blob.
-  // Falls back to the original file's data URL if anything about decoding
-  // or drawing the image fails — and a hard timeout guarantees that even if
-  // decoding just silently never fires an event for one bad file, it can't
-  // stall the rest of the batch forever.
+  // Vercel serverless functions cap response bodies at ~4.5MB — a photo
+  // stored above this can be written successfully (Redis itself handles
+  // much larger values) but can never be READ BACK, which is exactly what
+  // produced the 413 errors: GET /api/storage failing on a value already
+  // sitting in storage. This ceiling leaves comfortable margin once the
+  // value is wrapped in the {key, value} JSON response.
+  const MAX_PHOTO_BYTES = 3500000;
+
+  function dataUrlByteLength(dataUrl){
+    const commaIdx = dataUrl.indexOf(',');
+    const b64 = commaIdx >= 0 ? dataUrl.slice(commaIdx + 1) : dataUrl;
+    return Math.floor(b64.length * 0.75);
+  }
+
+  function drawToJpeg(img, maxDim, quality){
+    let width = img.naturalWidth, height = img.naturalHeight;
+    if (width > maxDim || height > maxDim){
+      if (width >= height){ height = Math.round(height * maxDim / width); width = maxDim; }
+      else { width = Math.round(width * maxDim / height); height = maxDim; }
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = width; canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, width, height);
+    return canvas.toDataURL('image/jpeg', quality);
+  }
+
+  // Downscales and re-encodes as JPEG before storing. Tries progressively
+  // smaller/lower-quality passes until the result is safely under
+  // MAX_PHOTO_BYTES — a stored photo too big to ever read back is worse
+  // than a smaller one, so this never falls back to the untouched original.
+  // Resolves null (rather than an oversized value) if no attempt fits, or
+  // if the image can't be decoded at all — callers must treat null as
+  // "this photo was skipped" and tell the user, not silently drop it.
   function compressImageFile(file, maxDim, quality){
     return new Promise((resolve) => {
       let settled = false;
@@ -1194,23 +1293,20 @@
       const reader = new FileReader();
       reader.onload = () => {
         const img = new Image();
-        const giveUpTimer = setTimeout(() => settle(reader.result), 8000);
+        const giveUpTimer = setTimeout(() => settle(null), 8000);
         img.onload = () => {
           clearTimeout(giveUpTimer);
-          try{
-            let width = img.naturalWidth, height = img.naturalHeight;
-            if (width > maxDim || height > maxDim){
-              if (width >= height){ height = Math.round(height * maxDim / width); width = maxDim; }
-              else { width = Math.round(width * maxDim / height); height = maxDim; }
-            }
-            const canvas = document.createElement('canvas');
-            canvas.width = width; canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-            settle(canvas.toDataURL('image/jpeg', quality));
-          } catch(e){ settle(reader.result); }
+          const attempts = [[maxDim, quality], [1200, 0.75], [800, 0.65], [500, 0.5]];
+          let best = null;
+          for (const [dim, q] of attempts){
+            try{
+              const candidate = drawToJpeg(img, dim, q);
+              if (dataUrlByteLength(candidate) <= MAX_PHOTO_BYTES){ best = candidate; break; }
+            } catch(e){ break; }
+          }
+          settle(best);
         };
-        img.onerror = () => { clearTimeout(giveUpTimer); settle(reader.result); };
+        img.onerror = () => { clearTimeout(giveUpTimer); settle(null); };
         img.src = reader.result;
       };
       reader.onerror = () => settle(null);
@@ -1827,14 +1923,18 @@
   async function mergePhotoDocxResults(found){
     const now = new Date().toISOString();
     let matched = 0;
+    const photoWrites = [];
     Object.entries(found).forEach(([externalId, dataUrl]) => {
       const home = findHomesMilHome(externalId);
       if (home){
-        home.photos.push({id: makeId('ph'), dataUrl, addedAt: now});
+        const photoId = makeId('ph');
+        home.photos.push({id: photoId, dataUrl, addedAt: now});
         home.updatedAt = now;
+        photoWrites.push(savePhotoToStorage(photoId, dataUrl));
         matched++;
       }
     });
+    await Promise.all(photoWrites);
     if (matched) persistRegister();
     return matched;
   }
@@ -2129,6 +2229,8 @@
     if (!register[id]) return;
     currentDetailId = id;
     currentDetailPane = 'details';
+    const statusEl = document.getElementById('detailPhotoStatus');
+    if (statusEl) statusEl.textContent = '';
     renderDetailModal();
     detailModal.classList.add('open');
   }
@@ -2166,8 +2268,10 @@
     });
     detailGallery.querySelectorAll('.gallery-del').forEach(btn => {
       btn.addEventListener('click', async () => {
-        h.photos = h.photos.filter(p => p.id !== btn.dataset.photoId);
+        const removedId = btn.dataset.photoId;
+        h.photos = h.photos.filter(p => p.id !== removedId);
         h.updatedAt = new Date().toISOString();
+        deletePhotoFromStorage(removedId);
         persistRegister();
         renderDetailModal(); renderRegisterView();
       });
@@ -2258,6 +2362,7 @@
     if (!confirm(`Remove "${displayTitle(h)}" from the register? This can't be undone.`)) return;
     delete register[h.id];
     compareSet.delete(h.id);
+    deleteHomeStorageAll(h);
     persistRegister();
     logActivity(`deleted "${displayAddress(h)}" from the register`);
     closeDetail();
@@ -2283,26 +2388,41 @@
 
     const home = register[targetId];
     const addBtn = document.getElementById('galleryAddBtn');
+    const statusEl = document.getElementById('detailPhotoStatus');
     const originalLabel = addBtn ? addBtn.textContent : null;
     if (addBtn) addBtn.disabled = true;
+    if (statusEl){ statusEl.textContent = ''; statusEl.className = 'status-msg'; }
 
-    let added = 0;
+    let added = 0, skipped = 0;
+    const photoWrites = [];
     for (let i = 0; i < files.length; i++){
       if (addBtn) addBtn.textContent = files.length > 1 ? `${i + 1}/${files.length}…` : '…';
       try{
         const dataUrl = await compressImageFile(files[i], 1600, 0.82);
         if (dataUrl){
-          home.photos.push({id: makeId('ph'), dataUrl, addedAt: new Date().toISOString()});
+          const photoId = makeId('ph');
+          home.photos.push({id: photoId, dataUrl, addedAt: new Date().toISOString()});
+          photoWrites.push(savePhotoToStorage(photoId, dataUrl));
           added++;
-        }
-      } catch(err){ /* skip this one, keep going */ }
+        } else skipped++;
+      } catch(err){ skipped++; }
     }
+    await Promise.all(photoWrites);
 
     if (addBtn){ addBtn.disabled = false; if (originalLabel) addBtn.textContent = originalLabel; }
     if (added){
       home.updatedAt = new Date().toISOString();
       persistRegister();
-      logActivity(`added ${added} photo${added === 1 ? '' : 's'} to "${displayTitle(home)}"`);
+      logActivity(`added ${added} photo${added === 1 ? '' : 's'} to "${displayTitle(home)}"${skipped ? ` (${skipped} skipped — too large)` : ''}`);
+    }
+    if (statusEl){
+      if (skipped && added){
+        statusEl.textContent = `Added ${added}. Skipped ${skipped} — couldn't get ${skipped === 1 ? 'it' : 'them'} small enough to store safely. Try a lower-resolution export of that photo.`;
+        statusEl.className = 'status-msg error';
+      } else if (skipped){
+        statusEl.textContent = `Couldn't add ${skipped === 1 ? 'that photo' : 'those photos'} — too large even after compression. Try a lower-resolution export.`;
+        statusEl.className = 'status-msg error';
+      }
     }
     if (currentDetailId === targetId) renderDetailModal();
     renderRegisterView(); renderShortlistView();
@@ -2546,7 +2666,8 @@
       if (!collected.address){ screenshotStatus.textContent = 'Location / Address is required.'; screenshotStatus.className = 'status-msg error'; return; }
       collected.rentNum = parseFlexibleNumber(collected.rentRaw);
       collected.city = collected.address;
-      createScreenshotHome(collected, imageDataUrl);
+      const home = createScreenshotHome(collected, imageDataUrl);
+      if (home.photos[0]) await savePhotoToStorage(home.photos[0].id, home.photos[0].dataUrl);
       persistRegister();
       screenshotReviewWrap.innerHTML = '';
       screenshotStatus.textContent = `Saved "${collected.address}" to the register.`; screenshotStatus.className = 'status-msg ok';
@@ -2840,6 +2961,149 @@
     importBackupInput.value = '';
   });
 
+  const repairStorageBtn = $('repairStorageBtn'), repairStorageStatus = $('repairStorageStatus');
+  repairStorageBtn.addEventListener('click', async () => {
+    repairStorageBtn.disabled = true;
+    repairStorageStatus.textContent = 'Repairing — this can take a moment for a lot of photos...';
+    repairStorageStatus.className = 'status-msg';
+    try{
+      const res = await fetch('/api/migrate-register', {method: 'POST', credentials: 'include'});
+      if (res.status === 404){
+        repairStorageStatus.textContent = "This only works on the deployed site, not this preview — there's no server-side storage here to repair.";
+        repairStorageStatus.className = 'status-msg error';
+        repairStorageBtn.disabled = false;
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok){
+        repairStorageStatus.textContent = `Repair failed: ${data.error || res.statusText}`;
+        repairStorageStatus.className = 'status-msg error';
+        repairStorageBtn.disabled = false;
+        return;
+      }
+      if (!data.migrated){
+        repairStorageStatus.textContent = data.reason || 'Nothing needed repairing.';
+        repairStorageStatus.className = 'status-msg ok';
+      } else {
+        repairStorageStatus.textContent = `Repaired: ${data.migratedHomes} home(s) and ${data.migratedPhotos} photo(s) moved to smaller storage pieces.${data.note ? ' ' + data.note : ''} Reloading your data...`;
+        repairStorageStatus.className = 'status-msg ok';
+      }
+      register = await loadRegister();
+      renderRegisterView(); renderShortlistView();
+      logActivity('ran a storage repair');
+    } catch(err){
+      repairStorageStatus.textContent = `Could not reach the repair endpoint: ${err.message}`;
+      repairStorageStatus.className = 'status-msg error';
+    }
+    repairStorageBtn.disabled = false;
+  });
+
+  const rebuildIndexBtn = $('rebuildIndexBtn'), rebuildIndexStatus = $('rebuildIndexStatus');
+  rebuildIndexBtn.addEventListener('click', async () => {
+    rebuildIndexBtn.disabled = true;
+    rebuildIndexStatus.textContent = 'Scanning for existing home data...'; rebuildIndexStatus.className = 'status-msg';
+    try{
+      const res = await fetch('/api/rebuild-index', {method: 'POST', credentials: 'include'});
+      if (res.status === 404){
+        rebuildIndexStatus.textContent = "This only works on the deployed site, not this preview.";
+        rebuildIndexStatus.className = 'status-msg error';
+        rebuildIndexBtn.disabled = false;
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok){
+        rebuildIndexStatus.textContent = `Rebuild failed: ${data.error || res.statusText}`;
+        rebuildIndexStatus.className = 'status-msg error';
+        rebuildIndexBtn.disabled = false;
+        return;
+      }
+      rebuildIndexStatus.textContent = data.recovered
+        ? `Found ${data.homeKeysFoundInRedis} home(s) in storage — restored ${data.recovered} that were missing from the list. Reloading...`
+        : `Checked ${data.homeKeysFoundInRedis} home(s) in storage — the list was already complete.`;
+      rebuildIndexStatus.className = 'status-msg ok';
+      register = await loadRegister();
+      renderRegisterView(); renderShortlistView(); renderSettingsView();
+      logActivity('rebuilt the storage index');
+    } catch(err){
+      rebuildIndexStatus.textContent = `Could not reach the rebuild endpoint: ${err.message}`;
+      rebuildIndexStatus.className = 'status-msg error';
+    }
+    rebuildIndexBtn.disabled = false;
+  });
+
+  const diagnoseStorageBtn = $('diagnoseStorageBtn'), storageMaintStatus = $('storageMaintStatus'), storageMaintResult = $('storageMaintResult');
+  diagnoseStorageBtn.addEventListener('click', async () => {
+    diagnoseStorageBtn.disabled = true;
+    storageMaintStatus.textContent = 'Checking...'; storageMaintStatus.className = 'status-msg';
+    storageMaintResult.innerHTML = '';
+    try{
+      const res = await fetch('/api/diagnose', {credentials: 'include'});
+      if (res.status === 404){
+        storageMaintStatus.textContent = "This only works on the deployed site, not this preview.";
+        storageMaintStatus.className = 'status-msg error';
+        diagnoseStorageBtn.disabled = false;
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok){
+        storageMaintStatus.textContent = `Check failed: ${data.error || res.statusText}`;
+        storageMaintStatus.className = 'status-msg error';
+        diagnoseStorageBtn.disabled = false;
+        return;
+      }
+      if (!data.overLimitCount){
+        storageMaintStatus.textContent = `Checked ${data.totalKeys} stored item(s), ${data.currentHomeCount} home(s) currently in the register — nothing too large to load.`;
+        storageMaintStatus.className = 'status-msg ok';
+      } else {
+        storageMaintStatus.textContent = `Checked ${data.totalKeys} stored item(s), ${data.currentHomeCount} home(s) currently in the register — ${data.overLimitCount} item(s) too large to ever load. Delete them below (you'll need to re-add that photo at a smaller size, or re-run Repair if it's the old combined register key).`;
+        storageMaintStatus.className = 'status-msg error';
+      }
+      if (data.hasBackupKey && data.backupHomeCount !== null){
+        storageMaintStatus.textContent += ` A backup snapshot exists with ${data.backupHomeCount} home(s) from before the last repair.`;
+      }
+
+      const resultParts = [];
+      const overLimit = data.sizes.filter(s => s.overLimit);
+      if (overLimit.length){
+        resultParts.push(overLimit.map(s => `
+          <div class="row-wrap" style="padding:6px 0;border-bottom:1px solid var(--border);">
+            <span class="faint" style="flex:1;font-size:11.5px;">${escapeHTML(s.key)} — ${s.mb}MB</span>
+            <button class="btn-danger btn btn-sm" data-delete-key="${escapeHTML(s.key)}">Delete</button>
+          </div>`).join(''));
+      }
+      if (data.homes && data.homes.length){
+        resultParts.push(`<div class="faint" style="font-size:11px;margin:10px 0 4px;text-transform:uppercase;letter-spacing:0.06em;">Homes currently stored (${data.homes.length})</div>`);
+        resultParts.push(`<div style="max-height:280px;overflow-y:auto;">` + data.homes.map(h => `
+          <div style="padding:5px 0;border-bottom:1px solid var(--border);font-size:11.5px;">
+            <span style="color:var(--ink);">${escapeHTML(h.nickname || h.address || h.id)}</span>
+            <span class="faint">${h.nickname && h.address ? ' — ' + escapeHTML(h.address) : ''} · ${h.photoCount} photo(s)${h.hasRatings ? ' · rated' : ''} · ${escapeHTML(h.viewStatus)} · updated ${h.updatedAt ? new Date(h.updatedAt).toLocaleDateString() : 'unknown'}</span>
+          </div>`).join('') + `</div>`);
+      }
+      storageMaintResult.innerHTML = resultParts.join('');
+      if (overLimit.length){
+        storageMaintResult.querySelectorAll('[data-delete-key]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            btn.disabled = true; btn.textContent = 'Deleting...';
+            try{
+              await window.storage.delete(btn.dataset.deleteKey, false);
+              btn.closest('.row-wrap').remove();
+              storageMaintStatus.textContent = 'Deleted. Reloading your data...'; storageMaintStatus.className = 'status-msg ok';
+              register = await loadRegister();
+              renderRegisterView(); renderShortlistView();
+            } catch(err){
+              btn.disabled = false; btn.textContent = 'Delete';
+              storageMaintStatus.textContent = `Could not delete: ${err.message}`; storageMaintStatus.className = 'status-msg error';
+            }
+          });
+        });
+      }
+    } catch(err){
+      storageMaintStatus.textContent = `Could not reach the check endpoint: ${err.message}`;
+      storageMaintStatus.className = 'status-msg error';
+    }
+    diagnoseStorageBtn.disabled = false;
+  });
+
   function renderSettingsView(){
     renderCriteriaGrid();
     ohaInput.value = settings.oha || '';
@@ -2966,11 +3230,14 @@
     }
 
     let added = 0, skipped = 0;
+    const photoWrites = [];
     homes.forEach(h => {
       if (register[h.id]){ skipped++; return; } // never overwrite an existing record
       register[h.id] = h;
+      (h.photos || []).forEach(p => { if (p.dataUrl) photoWrites.push(savePhotoToStorage(p.id, p.dataUrl)); });
       added++;
     });
+    await Promise.all(photoWrites);
     if (importedCriteria && !Object.values(criteria).some(arr => arr.length)) criteria = importedCriteria; // only adopt if current criteria is empty
     if (importedOha !== null && !settings.oha) settings.oha = importedOha;
     if (importedActivity.length) activity = activity.concat(importedActivity).sort((a, b) => new Date(a.ts) - new Date(b.ts));
@@ -2987,7 +3254,7 @@
   // BOOT
   // ============================================================
   async function init(){
-    register = await loadJSON(REGISTER_KEY, {});
+    register = await loadRegister();
     criteria = await loadJSON(CRITERIA_KEY, null);
     if (criteria === null){
       criteria = JSON.parse(JSON.stringify(SEED_CRITERIA));
